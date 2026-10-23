@@ -6,6 +6,7 @@ from typing import cast
 from morpheus_python_api.types import Language
 
 
+# The async here is mostly just to mirror crunch_file
 async def crunch(
     input: str,
     language: Language = Language.GREEK,
@@ -18,7 +19,9 @@ async def crunch(
     perseus_format_off: bool = False,
     verbs_only: bool = False,
 ) -> str:
-    """For meaning of arguments, see https://github.com/perseids-tools/morpheus#command-line-options"""
+    """Parses a single string using Morpheus. Unparsable inputs raise a ValueError. For meaning of arguments, see https://github.com/perseids-tools/morpheus#command-line-options."""
+    if len(input) == 0:
+        raise ValueError("Empty input cannot be parsed!")
     cmd_args = ["cruncher"]
     if language is Language.LATIN:
         cmd_args.append("-L")
@@ -51,6 +54,8 @@ async def crunch(
 
     stdout, stderr = stdout.decode(), stderr.decode()
 
-    # TODO: Error checking
+    # This catches unparsable forms as well as empty input
+    if len(stdout) == 0:
+        raise ValueError(f"Input could not be parsed:\n{input}\n{stderr}")
 
     return stdout
