@@ -1,3 +1,7 @@
+"""types.py
+Module for any type and enum definitions useful across modules.
+"""
+
 from enum import auto, Enum
 
 

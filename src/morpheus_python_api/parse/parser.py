@@ -1,3 +1,11 @@
+"""
+parser.py
+
+This module provides thin synchronous and asynchronous wrappers around the
+Morpheus binaries cruncher, gener, and pname. The gener and pname binaries have
+less functionality, and are not well-documented in the perseids-tools codebase.
+"""
+
 import subprocess
 from asyncio import create_subprocess_exec
 from asyncio.subprocess import PIPE
@@ -55,7 +63,11 @@ def _build_cmd_args(
 
 
 def _handle_crunch(
-    input: str, stdout: bytes, stderr: bytes, returncode: int, cmd_args: list[str]
+    input: str,
+    stdout: bytes,
+    stderr: bytes,
+    returncode: int,
+    cmd_args: list[str],
 ) -> str:
     output, error = stdout.decode(), stderr.decode()
     if returncode != 0:
@@ -64,7 +76,8 @@ def _handle_crunch(
         raise ValueError(f"Input could not be parsed:\n{input}\n{stderr}")
     if len(stdout) == 0:
         raise RuntimeError(
-            f"Parsing failed for unclear reasons with cruncher stderr:\n{stderr}"
+            "Parsing failed for unclear reasons with cruncher. "
+            f"stderr:\n{stderr}"
         )
     return output
 
@@ -82,13 +95,14 @@ async def async_crunch(
     verbs_only: bool = False,
     retry_ignoring_accents: bool = False,
 ) -> str:
-    """Parses a single string using Morpheus. Unparsable inputs raise a ValueError.
-    For meaning of arguments, see https://github.com/perseids-tools/morpheus#command-line-options.
-    retry_ignoring_accents parses with accents and breathings initially, but if this fails,
-    falls back to running as if ignore_accents = True."""
+    """Parses a single string using Morpheus. Unparsable inputs raise a
+    ValueError. For meaning of arguments, see
+    https://github.com/perseids-tools/morpheus#command-line-options.
+    retry_ignoring_accents parses with accents and breathings initially, but if
+    this fails, falls back to running as if ignore_accents = True."""
     if isinstance(input, StringIO):
         input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from the calling context
+    # If you want to handle empty inputs gracefully, do so from calling context
     if len(input) == 0:
         raise ValueError("Empty input cannot be parsed!")
 
@@ -125,7 +139,9 @@ async def async_crunch(
         )
         stdout, stderr = await proc.communicate(input=input.encode("utf-8"))
 
-    return _handle_crunch(input, stdout, stderr, cast(int, proc.returncode), cmd_args)
+    return _handle_crunch(
+        input, stdout, stderr, cast(int, proc.returncode), cmd_args
+    )
 
 
 def crunch(
@@ -141,10 +157,14 @@ def crunch(
     verbs_only: bool = False,
     retry_ignoring_accents: bool = False,
 ) -> str:
-    """Parses a single string using Morpheus. Unparsable inputs raise a ValueError. For meaning of arguments, see https://github.com/perseids-tools/morpheus#command-line-options. retry_ignoring_accents parses with accents and breathings initially, but if this fails, falls back to running as if ignore_accents = True."""
+    """Parses a single string using Morpheus. Unparsable inputs raise a
+    ValueError. For meaning of arguments, see
+    https://github.com/perseids-tools/morpheus#command-line-options.
+    retry_ignoring_accents parses with accents and breathings initially, but if
+    this fails, falls back to running as if ignore_accents = True."""
     if isinstance(input, StringIO):
         input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from the calling context
+    # If you want to handle empty inputs gracefully, do so from calling context
     if len(input) == 0:
         raise ValueError("Empty input cannot be parsed!")
 
@@ -182,7 +202,11 @@ def crunch(
 
 
 def _handle_gen(
-    input: str, stdout: bytes, stderr: bytes, returncode: int, cmd_args: list[str]
+    input: str,
+    stdout: bytes,
+    stderr: bytes,
+    returncode: int,
+    cmd_args: list[str],
 ) -> str:
     output, error = stdout.decode(), stderr.decode()
     if returncode != 0:
@@ -212,7 +236,7 @@ async def async_gen(
     Unparsable inputs raise a ValueError."""
     if isinstance(input, StringIO):
         input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from the calling context
+    # If you want to handle empty inputs gracefully, do so from calling context
     if len(input) == 0:
         raise ValueError("Empty input cannot be parsed!")
 
@@ -228,7 +252,9 @@ async def async_gen(
     )
     stdout, stderr = await proc.communicate(input=input.encode("utf-8"))
 
-    return _handle_gen(input, stdout, stderr, cast(int, proc.returncode), cmd_args)
+    return _handle_gen(
+        input, stdout, stderr, cast(int, proc.returncode), cmd_args
+    )
 
 
 def gen(
@@ -238,7 +264,7 @@ def gen(
     Unparsable inputs raise a ValueError."""
     if isinstance(input, StringIO):
         input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from the calling context
+    # If you want to handle empty inputs gracefully, do so from  calling context
     if len(input) == 0:
         raise ValueError("Empty input cannot be parsed!")
 

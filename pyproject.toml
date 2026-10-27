@@ -3,13 +3,9 @@ name = "morpheus-python-api"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-authors = [
-    { name = "Andrew Mayo", email = "acmayo399@gmail.com" }
-]
+authors = [{ name = "Andrew Mayo", email = "acmayo399@gmail.com" }]
 requires-python = ">=3.13"
-dependencies = [
-    "fastapi>=0.159.1",
-]
+dependencies = ["fastapi>=0.159.1"]
 
 [project.scripts]
 morpheus-python-api = "morpheus_python_api:main"
@@ -19,7 +15,13 @@ requires = ["uv_build>=0.13.4,<0.14.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
-]
+dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0"]
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.lint]
+extend-select = ["E501", "W505"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 80
