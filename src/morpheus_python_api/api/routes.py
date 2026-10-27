@@ -1,22 +1,22 @@
-from fastapi import APIRouter, Request
+"""
+routes.py
 
-from morpheus_python_api.types import Language
+FastAPI routes.
+"""
+
+from fastapi import APIRouter
+
+from morpheus_python_api.parse.parser import async_crunch
 
 router = APIRouter()
 
 
-@router.patch("/latin")
-async def set_language_latin(request: Request) -> None:
-    request.app.state.language = Language.LATIN
-    return
+@router.get("/crunch/{text}")
+async def crunch_text(text: str) -> str:
+    result = await async_crunch(text)
+    return result
 
-@router.patch("/greek")
-def set_language_greek(request: Request) -> None:
-    request.app.state.language = Language.GREEK
 
-@router.get("/parse/{text}")
-async def parse(request: Request) -> str:
-
-@router.post("/parse-cached/{text}")
+@router.post("/crunch-cached/{text}")
 async def parse_cached():
     return

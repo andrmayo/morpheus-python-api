@@ -1,4 +1,4 @@
-"""
+"""parser
 parser.py
 
 This module provides thin synchronous and asynchronous wrappers around the
@@ -37,7 +37,8 @@ def _build_cmd_args(
     verbs_only: bool = False,
 ) -> tuple[list[str], dict[str, str]]:
     env = _build_env()
-    cmd_args = [f"{env['BIN_PATH']}/cruncher"]
+    cur_bin_path = env["BIN_PATH"]
+    cmd_args = [f"{cur_bin_path}/cruncher"]
     if language is Language.LATIN:
         cmd_args.append("-L")
     if language is Language.ITALIAN:
@@ -63,27 +64,27 @@ def _build_cmd_args(
 
 
 def _handle_crunch(
-    input: str,
+    input_str: str,
     stdout: bytes,
     stderr: bytes,
     returncode: int,
     cmd_args: list[str],
 ) -> str:
-    output, error = stdout.decode(), stderr.decode()
+    output_str, error = stdout.decode(), stderr.decode()
     if returncode != 0:
-        raise CalledProcessError(returncode, cmd_args, output, error)
-    if len(output) == 0 and error == f"{input}\n":
-        raise ValueError(f"Input could not be parsed:\n{input}\n{stderr}")
+        raise CalledProcessError(returncode, cmd_args, output_str, error)
+    if len(output_str) == 0 and error == f"{input_str}\n":
+        raise ValueError(f"input_str could not be parsed:\n{input}\n{stderr}")
     if len(stdout) == 0:
         raise RuntimeError(
             "Parsing failed for unclear reasons with cruncher. "
             f"stderr:\n{stderr}"
         )
-    return output
+    return output_str
 
 
 async def async_crunch(
-    input: str | StringIO,
+    input_str: str | StringIO,
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -95,16 +96,16 @@ async def async_crunch(
     verbs_only: bool = False,
     retry_ignoring_accents: bool = False,
 ) -> str:
-    """Parses a single string using Morpheus. Unparsable inputs raise a
+    """Parses a single string using Morpheus. Unparsable input_strs raise a
     ValueError. For meaning of arguments, see
     https://github.com/perseids-tools/morpheus#command-line-options.
     retry_ignoring_accents parses with accents and breathings initially, but if
     this fails, falls back to running as if ignore_accents = True."""
-    if isinstance(input, StringIO):
-        input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from calling context
-    if len(input) == 0:
-        raise ValueError("Empty input cannot be parsed!")
+    if isinstance(input_str, StringIO):
+        input_str = input_str.getvalue()
+    # If you want to handle empty input_str gracefully, do so from caller
+    if len(input_str) == 0:
+        raise ValueError("Empty input_str cannot be parsed!")
 
     cmd_args, env = _build_cmd_args(
         language,
@@ -125,27 +126,27 @@ async def async_crunch(
         stdout=PIPE,
         stderr=PIPE,
     )
-    stdout, stderr = await proc.communicate(input=input.encode("utf-8"))
+    stdout, stderr = await proc.communicate(input=input_str.encode("utf-8"))
 
     if (
         retry_ignoring_accents
         and stdout == 0
-        and stderr == input
+        and stderr == input_str
         and not ignore_accents
     ):
         cmd_args.append("-n")
         proc = await create_subprocess_exec(
             *cmd_args, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=_build_env()
         )
-        stdout, stderr = await proc.communicate(input=input.encode("utf-8"))
+        stdout, stderr = await proc.communicate(input=input_str.encode("utf-8"))
 
     return _handle_crunch(
-        input, stdout, stderr, cast(int, proc.returncode), cmd_args
+        input_str, stdout, stderr, cast(int, proc.returncode), cmd_args
     )
 
 
 def crunch(
-    input: str | StringIO,
+    input_str: str | StringIO,
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -157,16 +158,16 @@ def crunch(
     verbs_only: bool = False,
     retry_ignoring_accents: bool = False,
 ) -> str:
-    """Parses a single string using Morpheus. Unparsable inputs raise a
+    """Parses a single string using Morpheus. Unparsable input_strs raise a
     ValueError. For meaning of arguments, see
     https://github.com/perseids-tools/morpheus#command-line-options.
     retry_ignoring_accents parses with accents and breathings initially, but if
     this fails, falls back to running as if ignore_accents = True."""
-    if isinstance(input, StringIO):
-        input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from calling context
-    if len(input) == 0:
-        raise ValueError("Empty input cannot be parsed!")
+    if isinstance(input_str, StringIO):
+        input_str = input_str.getvalue()
+    # If you want to handle empty input_strs gracefully, do so from caller
+    if len(input_str) == 0:
+        raise ValueError("Empty input_str cannot be parsed!")
 
     cmd_args, env = _build_cmd_args(
         language,
@@ -181,7 +182,11 @@ def crunch(
     )
 
     result = subprocess.run(
-        cmd_args, env=env, input=input.encode("utf-8"), capture_output=True
+        cmd_args,
+        env=env,
+        input=input_str.encode("utf-8"),
+        capture_output=True,
+        check=False,
     )
 
     stdout, stderr = result.stdout, result.stderr
@@ -189,59 +194,66 @@ def crunch(
     if (
         retry_ignoring_accents
         and stdout == 0
-        and stderr == input
+        and stderr == input_str
         and not ignore_accents
     ):
         cmd_args.append("-n")
         result = subprocess.run(
-            cmd_args, env=env, input=input.encode("utf-8"), capture_output=True
+            cmd_args,
+            env=env,
+            input=input_str.encode("utf-8"),
+            capture_output=True,
+            check=False,
         )
         stdout, stderr = result.stdout, result.stderr
 
-    return _handle_crunch(input, stdout, stderr, result.returncode, cmd_args)
+    return _handle_crunch(
+        input_str, stdout, stderr, result.returncode, cmd_args
+    )
 
 
 def _handle_gen(
-    input: str,
+    input_str: str,
     stdout: bytes,
     stderr: bytes,
     returncode: int,
     cmd_args: list[str],
 ) -> str:
-    output, error = stdout.decode(), stderr.decode()
+    output_str, error = stdout.decode(), stderr.decode()
     if returncode != 0:
-        raise CalledProcessError(returncode, cmd_args, output, error)
-    if len(output) == len(input):
+        raise CalledProcessError(returncode, cmd_args, output_str, error)
+    if len(output_str) == len(input_str):
         raise ValueError(
-            "Input is malformed.\n"
-            f"Input:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
+            "input_str is malformed.\n"
+            f"input_str:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
         )
     if len(error) > 0:
         raise ValueError(
             "Lemma not found.\n"
-            f"Input:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
+            f"input_str:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
         )
     if len(stdout) == 0:
         raise RuntimeError(
             "Parsing failed for unclear reasons.\n"
-            f"Input:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
+            f"input_str:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
         )
-    return output
+    return output_str
 
 
 async def async_gen(
-    input: str | StringIO,
+    input_str: str | StringIO,
 ) -> str:
     """Generates a parse table from a lemma using Morpheus.
-    Unparsable inputs raise a ValueError."""
-    if isinstance(input, StringIO):
-        input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from calling context
-    if len(input) == 0:
-        raise ValueError("Empty input cannot be parsed!")
+    Unparsable input_strs raise a ValueError."""
+    if isinstance(input_str, StringIO):
+        input_str = input_str.getvalue()
+    # If you want to handle empty input_strs gracefully, do so from caller
+    if len(input_str) == 0:
+        raise ValueError("Empty input_str cannot be parsed!")
 
     env = _build_env()
-    cmd_args = [f"{env['BIN_PATH']}/gener"]
+    cur_bin_path = env["BIN_PATH"]
+    cmd_args = [f"{cur_bin_path}/gener"]
 
     proc = await create_subprocess_exec(
         *cmd_args,
@@ -250,31 +262,36 @@ async def async_gen(
         stdout=PIPE,
         stderr=PIPE,
     )
-    stdout, stderr = await proc.communicate(input=input.encode("utf-8"))
+    stdout, stderr = await proc.communicate(input=input_str.encode("utf-8"))
 
     return _handle_gen(
-        input, stdout, stderr, cast(int, proc.returncode), cmd_args
+        input_str, stdout, stderr, cast(int, proc.returncode), cmd_args
     )
 
 
 def gen(
-    input: str | StringIO,
+    input_str: str | StringIO,
 ) -> str:
     """Generates a parse table from a lemma using Morpheus.
-    Unparsable inputs raise a ValueError."""
-    if isinstance(input, StringIO):
-        input = input.getvalue()
-    # If you want to handle empty inputs gracefully, do so from  calling context
-    if len(input) == 0:
-        raise ValueError("Empty input cannot be parsed!")
+    Unparsable input_strs raise a ValueError."""
+    if isinstance(input_str, StringIO):
+        input_str = input_str.getvalue()
+    # If you want to handle empty input_strs gracefully, do so from caller
+    if len(input_str) == 0:
+        raise ValueError("Empty input_str cannot be parsed!")
 
     env = _build_env()
-    cmd_args = [f"{env['BIN_PATH']}/gener"]
+    cur_bin_path = env["BIN_PATH"]
+    cmd_args = [f"{cur_bin_path}/gener"]
 
     result = subprocess.run(
-        cmd_args, env=env, input=input.encode("utf-8"), capture_output=True
+        cmd_args,
+        env=env,
+        input=input_str.encode("utf-8"),
+        capture_output=True,
+        check=False,
     )
 
     stdout, stderr = result.stdout, result.stderr
 
-    return _handle_gen(input, stdout, stderr, result.returncode, cmd_args)
+    return _handle_gen(input_str, stdout, stderr, result.returncode, cmd_args)

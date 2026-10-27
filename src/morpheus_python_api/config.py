@@ -3,9 +3,9 @@ config.py
 
 Configuration functions useful across modules.
 
-Instead of setting environment variables directly, which a given application might reasonably do,
-bin_path and morphlib_path copy the existing environment as a dictionary and add the relevant
-paths to the dictionary.
+Instead of setting environment variables directly, which a given application
+might reasonably do, bin_path and morphlib_path copy the existing environment
+as a dictionary and add the relevant paths to the dictionary.
 """
 
 import os
