@@ -91,11 +91,6 @@ def test_crunch():
     )
 
 
-# with gener, when the input is malformed, it simply gets echoed to STDOUT
-# when the lemma isn't found, @failed message gets sent to STDOUT and STDERR
-# while the "Something wrong with stemkeys" line gets sent just to STDERR
-
-
 @pytest.mark.asyncio
 async def test_async_gen():
     result = [
@@ -129,6 +124,9 @@ async def test_async_gen():
         # missing newline after the lemma :le:lo/gos
         result = [result async for result in async_gen("some junk")][0]
 
+    with pytest.raises(ValueError, match=r"(?i)stem"):
+        result = [result async for result in async_gen(":no:lo/g bogus")][0]
+
 
 def test_gen():
     result = list(gen(":le:lo/gos\n:no:lo/g os_ou masc"))[0]
@@ -159,3 +157,6 @@ def test_gen():
     with pytest.raises(ValueError, match=r"(?i)garbage"):
         # missing newline after the lemma :le:lo/gos
         result = list(gen("some junk"))[0]
+
+    with pytest.raises(ValueError, match=r"(?i)stem"):
+        result = list(gen(":no:lo/g bogus"))[0]

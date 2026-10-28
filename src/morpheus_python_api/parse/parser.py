@@ -217,6 +217,8 @@ def _handle_gen(
     raise_on_failure: bool,
 ) -> str:
     output_str = buffer[: -len(_GEN_END)].decode()
+    if not raise_on_failure:
+        return output_str
     if not output_str:
         raise ValueError(
             f"Garbage input.\ninput:\n{input_str}\noutput:\n{output_str}"
@@ -225,8 +227,10 @@ def _handle_gen(
         raise ValueError(
             f"Garbage input.\ninput:\n{input_str}\noutput:\n{output_str}"
         )
-    if not raise_on_failure:
-        return output_str
+    if "@failed" in output_str:
+        raise ValueError(
+            f"Bad stem keys. \ninput:\n{input_str}\noutput:\n{output_str}"
+        )
     if input_str.strip() == output_str.strip():
         raise ValueError(
             "Word not properly specified.\n"
