@@ -13,7 +13,7 @@ import subprocess
 from asyncio import StreamReader, create_subprocess_exec, StreamWriter
 from asyncio.subprocess import PIPE
 from collections.abc import AsyncIterable, AsyncIterator, Iterator
-from io import BufferedWriter, StringIO, BufferedReader
+from io import BufferedWriter, BufferedReader, TextIOBase
 from os import environ
 from typing import cast
 
@@ -109,7 +109,7 @@ async def _async_crunch_loop_logic(
 
 
 async def async_crunch(
-    inputs: str | list[str] | StringIO | AsyncIterable[str],
+    inputs: str | list[str] | TextIOBase | AsyncIterable[str],
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -165,7 +165,7 @@ async def async_crunch(
 
 
 def crunch(
-    inputs: str | list[str] | StringIO,
+    inputs: str | list[str] | TextIOBase,
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -270,7 +270,7 @@ async def _async_gener_loop_logic(
 
 
 async def async_gen(
-    inputs: str | list[str] | StringIO, raise_on_failure: bool = True
+    inputs: str | list[str] | TextIOBase, raise_on_failure: bool = True
 ) -> AsyncIterator[str]:
     """Generates a parse table from a lemma using Morpheus.
     Unparsable input_strs raise a ValueError."""
@@ -307,7 +307,7 @@ async def async_gen(
 
 
 def gen(
-    inputs: str | list[str] | StringIO, raise_on_failure: bool = True
+    inputs: str | list[str] | TextIOBase, raise_on_failure: bool = True
 ) -> Iterator[str]:
     """Generates a parse table from a lemma using Morpheus.
     Unparsable input_strs raise a ValueError."""
