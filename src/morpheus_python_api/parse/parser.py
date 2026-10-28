@@ -12,7 +12,7 @@ binaries are buffered by line.
 import subprocess
 from asyncio import StreamReader, create_subprocess_exec, StreamWriter
 from asyncio.subprocess import PIPE
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterable, AsyncIterator, Iterator
 from io import BufferedWriter, StringIO, BufferedReader
 from os import environ
 from typing import cast
@@ -95,8 +95,21 @@ def _handle_crunch(
     return output_str
 
 
+async def _async_crunch_loop_logic(
+    input_str: str,
+    stdin: StreamWriter,
+    stdout: StreamReader,
+    raise_on_failure: bool,
+) -> str:
+    proc_input = (input_str + "\n").encode("utf-8") + _END
+    stdin.write(proc_input)
+    await stdin.drain()
+    buffer = await stdout.readuntil(_END)
+    return _handle_crunch(input_str, buffer, raise_on_failure)
+
+
 async def async_crunch(
-    inputs: str | list[str] | StringIO,
+    inputs: str | list[str] | StringIO | AsyncIterable[str],
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -139,12 +152,16 @@ async def async_crunch(
     )
     proc.stdin = cast(StreamWriter, proc.stdin)
     proc.stdout = cast(StreamReader, proc.stdout)
-    for input_str in inputs:
-        proc_input = (input_str + "\n").encode("utf-8") + _END
-        proc.stdin.write(proc_input)
-        await proc.stdin.drain()
-        buffer = await proc.stdout.readuntil(_END)
-        yield _handle_crunch(input_str, buffer, raise_on_failure)
+    if isinstance(inputs, AsyncIterable):
+        async for input_str in inputs:
+            yield await _async_crunch_loop_logic(
+                input_str, proc.stdin, proc.stdout, raise_on_failure
+            )
+    else:
+        for input_str in inputs:
+            yield await _async_crunch_loop_logic(
+                input_str, proc.stdin, proc.stdout, raise_on_failure
+            )
 
 
 def crunch(
@@ -239,6 +256,19 @@ def _handle_gen(
     return output_str
 
 
+async def _async_gener_loop_logic(
+    input_str: str,
+    stdin: StreamWriter,
+    stdout: StreamReader,
+    raise_on_failure: bool,
+) -> str:
+    proc_input = (input_str + "\n").encode("utf-8") + _GEN_INPUT_SUFFIX
+    stdin.write(proc_input)
+    await stdin.drain()
+    buffer = await stdout.readuntil(_GEN_END)
+    return _handle_gen(input_str, buffer, raise_on_failure)
+
+
 async def async_gen(
     inputs: str | list[str] | StringIO, raise_on_failure: bool = True
 ) -> AsyncIterator[str]:
@@ -264,12 +294,16 @@ async def async_gen(
     proc.stdin = cast(StreamWriter, proc.stdin)
     proc.stdout = cast(StreamReader, proc.stdout)
 
-    for input_str in inputs:
-        proc_input = (input_str + "\n").encode("utf-8") + _GEN_INPUT_SUFFIX
-        proc.stdin.write(proc_input)
-        await proc.stdin.drain()
-        buffer = await proc.stdout.readuntil(_GEN_END)
-        yield _handle_gen(input_str, buffer, raise_on_failure)
+    if isinstance(inputs, AsyncIterator):
+        async for input_str in inputs:
+            yield await _async_gener_loop_logic(
+                input_str, proc.stdin, proc.stdout, raise_on_failure
+            )
+    else:
+        for input_str in inputs:
+            yield await _async_gener_loop_logic(
+                input_str, proc.stdin, proc.stdout, raise_on_failure
+            )
 
 
 def gen(
