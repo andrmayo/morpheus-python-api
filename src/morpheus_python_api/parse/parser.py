@@ -4,24 +4,30 @@ parser.py
 This module provides thin synchronous and asynchronous wrappers around the
 Morpheus binaries cruncher, gener, and pname. The gener and pname binaries have
 less functionality, and are not well-documented in the perseids-tools codebase.
+The design here enables streaming inputs to relevant functions, at the cost of
+more overhead when inputs are all available initially, since outputs from the C
+binaries are buffered by line.
 """
 
 import subprocess
 from asyncio import StreamReader, create_subprocess_exec, StreamWriter
 from asyncio.subprocess import PIPE
 from collections.abc import AsyncIterator, Iterator
-from io import StringIO, BufferedReader
+from io import BufferedWriter, StringIO, BufferedReader
 from os import environ
-from subprocess import CalledProcessError
 from typing import cast
 
 from morpheus_python_api.config import bin_path, morphlib_path
 from morpheus_python_api.types import Language
 
 # sentinel value for end of input
-_SENTINEL = "@@@@"
+_SENTINEL = "@@@"
 # for identifying end of input
 _END = f"{_SENTINEL}\n".encode("utf-8")
+# gener doesn't echo back arbitrary input
+# but gener does respond with --\n when \n is sent in
+_GEN_INPUT_SUFFIX = "\n\n\n".encode("utf-8")
+_GEN_END = "--\n--\n--\n".encode("utf-8")
 
 
 def _build_env() -> dict[str, str]:
@@ -71,7 +77,7 @@ def _build_cmd_args(
 
 
 def _handle_crunch(
-    input_str,
+    input_str: str,
     buffer: bytes,
     # output is either the STDOUT and STDERR bytes,
     # or a selector.select() object
@@ -79,6 +85,8 @@ def _handle_crunch(
 ) -> str:
     # NOTE: It might be worth logging stderr when raise_on_failure = False
     output_str = buffer[: -len(_END)].decode()
+    if not output_str:
+        raise RuntimeError("Cruncher exited unexpectedly")
 
     if len(output_str) - 1 == len(input_str):
         if not raise_on_failure:
@@ -183,12 +191,12 @@ def crunch(
         stderr=subprocess.STDOUT,
     ) as proc:
         proc.stdin, proc.stdout = (
-            cast(BufferedReader, proc.stdin),
+            cast(BufferedWriter, proc.stdin),
             cast(BufferedReader, proc.stdout),
         )
         for input_str in inputs:
-            proc_input = f"{input_str}\n{_SENTINEL}\n"
-            proc.stdin.write(proc_input.encode("utf-8"))
+            proc_input = (input_str + "\n").encode("utf-8") + _END
+            proc.stdin.write(proc_input)
             proc.stdin.flush()
 
             buffer = b""
@@ -205,84 +213,94 @@ def crunch(
 
 def _handle_gen(
     input_str: str,
-    stdout: bytes,
-    stderr: bytes,
-    returncode: int,
-    cmd_args: list[str],
+    buffer: bytes,
+    raise_on_failure: bool,
 ) -> str:
-    output_str, error = stdout.decode(), stderr.decode()
-    if returncode != 0:
-        raise CalledProcessError(returncode, cmd_args, output_str, error)
-    if len(output_str) == len(input_str):
+    output_str = buffer[: -len(_GEN_END)].decode()
+    if not output_str:
         raise ValueError(
-            "input_str is malformed.\n"
-            f"input_str:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
+            f"Garbage input.\ninput:\n{input_str}\noutput:\n{output_str}"
         )
-    if len(error) > 0:
+    if all(char in "-\n" for char in output_str):
         raise ValueError(
-            "Lemma not found.\n"
-            f"input_str:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
+            f"Garbage input.\ninput:\n{input_str}\noutput:\n{output_str}"
         )
-    if len(stdout) == 0:
-        raise RuntimeError(
-            "Parsing failed for unclear reasons.\n"
-            f"input_str:\n{input}\nstdout:{stdout}\nstderr:{stderr}\n{stderr}"
+    if not raise_on_failure:
+        return output_str
+    if input_str.strip() == output_str.strip():
+        raise ValueError(
+            "Word not properly specified.\n"
+            f"input:\n{input_str}\noutput:\n{output_str}"
         )
     return output_str
 
 
 async def async_gen(
-    input_str: str | StringIO,
-) -> str:
+    inputs: str | list[str] | StringIO, raise_on_failure: bool = True
+) -> AsyncIterator[str]:
     """Generates a parse table from a lemma using Morpheus.
     Unparsable input_strs raise a ValueError."""
-    if isinstance(input_str, StringIO):
-        input_str = input_str.getvalue()
-    # If you want to handle empty input_strs gracefully, do so from caller
-    if len(input_str) == 0:
-        raise ValueError("Empty input_str cannot be parsed!")
+    if isinstance(inputs, str):
+        # If you want to handle empty input_strs gracefully, do so from caller
+        if len(inputs) == 0:
+            raise ValueError("Empty input_str cannot be parsed!")
+        inputs = [inputs]
 
     env = _build_env()
     cur_bin_path = env["BIN_PATH"]
-    cmd_args = [f"{cur_bin_path}/gener"]
+    cmd_args = ["stdbuf", "-o0", "-e0", f"{cur_bin_path}/gener"]
 
     proc = await create_subprocess_exec(
         *cmd_args,
         env=env,
         stdin=PIPE,
         stdout=PIPE,
-        stderr=PIPE,
+        stderr=subprocess.STDOUT,
     )
-    stdout, stderr = await proc.communicate(input=input_str.encode("utf-8"))
+    proc.stdin = cast(StreamWriter, proc.stdin)
+    proc.stdout = cast(StreamReader, proc.stdout)
 
-    return _handle_gen(
-        input_str, stdout, stderr, cast(int, proc.returncode), cmd_args
-    )
+    for input_str in inputs:
+        proc_input = (input_str + "\n").encode("utf-8") + _GEN_INPUT_SUFFIX
+        proc.stdin.write(proc_input)
+        await proc.stdin.drain()
+        buffer = await proc.stdout.readuntil(_GEN_END)
+        yield _handle_gen(input_str, buffer, raise_on_failure)
 
 
 def gen(
-    input_str: str | StringIO,
-) -> str:
+    inputs: str | list[str] | StringIO, raise_on_failure: bool = True
+) -> Iterator[str]:
     """Generates a parse table from a lemma using Morpheus.
     Unparsable input_strs raise a ValueError."""
-    if isinstance(input_str, StringIO):
-        input_str = input_str.getvalue()
-    # If you want to handle empty input_strs gracefully, do so from caller
-    if len(input_str) == 0:
-        raise ValueError("Empty input_str cannot be parsed!")
+    if isinstance(inputs, str):
+        if len(inputs) == 0:
+            raise ValueError("Empty input_str cannot be parsed!")
+        inputs = [inputs]
 
     env = _build_env()
     cur_bin_path = env["BIN_PATH"]
-    cmd_args = [f"{cur_bin_path}/gener"]
+    cmd_args = ["stdbuf", "-o0", "-e0", f"{cur_bin_path}/gener"]
 
-    result = subprocess.run(
-        cmd_args,
-        env=env,
-        input=input_str.encode("utf-8"),
-        capture_output=True,
-        check=False,
-    )
+    with subprocess.Popen(
+        cmd_args, env=env, stdin=PIPE, stdout=PIPE, stderr=subprocess.STDOUT
+    ) as proc:
+        proc.stdin = cast(BufferedWriter, proc.stdin)
+        proc.stdout = cast(BufferedReader, proc.stdout)
 
-    stdout, stderr = result.stdout, result.stderr
+        for input_str in inputs:
+            proc_input = (input_str + "\n").encode("utf-8") + _GEN_INPUT_SUFFIX
+            proc.stdin.write(proc_input)
+            proc.stdin.flush()
 
-    return _handle_gen(input_str, stdout, stderr, result.returncode, cmd_args)
+            buffer = b""
+            while not buffer.endswith(_GEN_END):
+                # 65536 is default maximum for pipe buffer
+                # since we're streaming individual inputs,
+                # this should always be sufficient
+                chunk = proc.stdout.read1(65536)
+                if not chunk:
+                    raise RuntimeError("Cruncher exited unexpectedly")
+                buffer += chunk
+
+            yield _handle_gen(input_str, buffer, raise_on_failure)

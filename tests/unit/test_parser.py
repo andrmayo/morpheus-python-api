@@ -98,7 +98,9 @@ def test_crunch():
 
 @pytest.mark.asyncio
 async def test_async_gen():
-    result = await async_gen(":le:lo/gos\n:no:lo/g os_ou masc\n")
+    result = [
+        result async for result in async_gen(":le:lo/gos\n:no:lo/g os_ou masc")
+    ][0]
     assert result == (
         "\n:le:lo/gos\n"
         "<G>lo/gos</G>  os_ou masc nom sg\n"
@@ -119,13 +121,17 @@ async def test_async_gen():
         ":no:lo/g os_ou masc\n"
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"(?i)specified"):
         # missing newline after the lemma :le:lo/gos
-        result = await async_gen(":le:lo/gos:no:lo/g os_ou masc\n")
+        result = [result async for result in async_gen(":le:lo/gos:no:lo/g")][0]
+
+    with pytest.raises(ValueError, match=r"(?i)garbage"):
+        # missing newline after the lemma :le:lo/gos
+        result = [result async for result in async_gen("some junk")][0]
 
 
 def test_gen():
-    result = gen(":le:lo/gos\n:no:lo/g os_ou masc\n")
+    result = list(gen(":le:lo/gos\n:no:lo/g os_ou masc"))[0]
     assert result == (
         "\n:le:lo/gos\n"
         "<G>lo/gos</G>  os_ou masc nom sg\n"
@@ -146,8 +152,10 @@ def test_gen():
         ":no:lo/g os_ou masc\n"
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"(?i)specified"):
         # missing newline after the lemma :le:lo/gos
-        result = gen(":le:lo/gos:no:lo/g os_ou masc\n")
+        result = list(gen(":le:lo/gos:no:lo/g"))[0]
 
-    # result = gen(":")
+    with pytest.raises(ValueError, match=r"(?i)garbage"):
+        # missing newline after the lemma :le:lo/gos
+        result = list(gen("some junk"))[0]
