@@ -10,8 +10,8 @@ all:
 install:
 	@ cd morpheus/src && make install
 	@ $(MAKE) build-morphlib
-	cp -r morpheus/bin .
-	cp -r morpheus/stemlib .
+	cp -r morpheus/bin src/morpheus_python_api/
+	cp -r morpheus/stemlib src/morpheus_python_api/
 	@ echo "To use bin/cruncher, ensure that MORPHLIB=stemlib is available as an env variable"
 
 build-morphlib: build-greek build-latin build-italian
