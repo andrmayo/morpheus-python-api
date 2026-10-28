@@ -20,7 +20,7 @@ from morpheus_python_api.parse.parser import (
 
 @pytest.mark.asyncio
 async def test_async_crunch():
-    result = await async_crunch("lu/w")
+    result = [result async for result in async_crunch("lu/w")][0]
     assert result == (
         "lu/w\n"
         "<NL>V lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -31,9 +31,11 @@ async def test_async_crunch():
 
     with pytest.raises(ValueError):
         # accent is wrong
-        result = await async_crunch("luw/")
+        result = [result async for result in async_crunch("luw/")][0]
 
-    result = await async_crunch("luw/", ignore_accents=True)
+    result = [
+        result async for result in async_crunch("luw/", ignore_accents=True)
+    ][0]
     assert result == (
         "luw/\n"
         "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -55,7 +57,7 @@ async def test_async_crunch():
 
 
 def test_crunch():
-    result = crunch("lu/w")
+    result = list(crunch("lu/w"))[0]
     assert result == (
         "lu/w\n"
         "<NL>V lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -66,9 +68,9 @@ def test_crunch():
 
     with pytest.raises(ValueError):
         # accent is wrong
-        result = crunch("luw/")
+        result = list(crunch("luw/"))
 
-    result = crunch("luw/", ignore_accents=True)
+    result = list(crunch("luw/", ignore_accents=True))[0]
     assert result == (
         "luw/\n"
         "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"

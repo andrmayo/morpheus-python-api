@@ -7,15 +7,21 @@ less functionality, and are not well-documented in the perseids-tools codebase.
 """
 
 import subprocess
-from asyncio import create_subprocess_exec
+from asyncio import StreamReader, create_subprocess_exec, StreamWriter
 from asyncio.subprocess import PIPE
-from io import StringIO
+from collections.abc import AsyncIterator, Iterator
+from io import StringIO, BufferedReader
 from os import environ
 from subprocess import CalledProcessError
 from typing import cast
 
 from morpheus_python_api.config import bin_path, morphlib_path
 from morpheus_python_api.types import Language
+
+# sentinel value for end of input
+_SENTINEL = "@@@@"
+# for identifying end of input
+_END = f"{_SENTINEL}\n".encode("utf-8")
 
 
 def _build_env() -> dict[str, str]:
@@ -38,7 +44,8 @@ def _build_cmd_args(
 ) -> tuple[list[str], dict[str, str]]:
     env = _build_env()
     cur_bin_path = env["BIN_PATH"]
-    cmd_args = [f"{cur_bin_path}/cruncher"]
+    # the stdbuff part is to disable buffering, which lets us stream
+    cmd_args = ["stdbuf", "-o0", "-e0", f"{cur_bin_path}/cruncher"]
     if language is Language.LATIN:
         cmd_args.append("-L")
     if language is Language.ITALIAN:
@@ -64,27 +71,24 @@ def _build_cmd_args(
 
 
 def _handle_crunch(
-    input_str: str,
-    stdout: bytes,
-    stderr: bytes,
-    returncode: int,
-    cmd_args: list[str],
+    input_str,
+    buffer: bytes,
+    # output is either the STDOUT and STDERR bytes,
+    # or a selector.select() object
+    raise_on_failure: bool,
 ) -> str:
-    output_str, error = stdout.decode(), stderr.decode()
-    if returncode != 0:
-        raise CalledProcessError(returncode, cmd_args, output_str, error)
-    if len(output_str) == 0 and error == f"{input_str}\n":
-        raise ValueError(f"input_str could not be parsed:\n{input}\n{stderr}")
-    if len(stdout) == 0:
-        raise RuntimeError(
-            "Parsing failed for unclear reasons with cruncher. "
-            f"stderr:\n{stderr}"
-        )
+    # NOTE: It might be worth logging stderr when raise_on_failure = False
+    output_str = buffer[: -len(_END)].decode()
+
+    if len(output_str) - 1 == len(input_str):
+        if not raise_on_failure:
+            return output_str
+        raise ValueError(f"input_str could not be parsed:\n{input_str}")
     return output_str
 
 
 async def async_crunch(
-    input_str: str | StringIO,
+    inputs: str | list[str] | StringIO,
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -94,18 +98,17 @@ async def async_crunch(
     lemma: bool = False,
     perseus_format_off: bool = False,
     verbs_only: bool = False,
-    retry_ignoring_accents: bool = False,
-) -> str:
-    """Parses a single string using Morpheus. Unparsable input_strs raise a
-    ValueError. For meaning of arguments, see
-    https://github.com/perseids-tools/morpheus#command-line-options.
-    retry_ignoring_accents parses with accents and breathings initially, but if
-    this fails, falls back to running as if ignore_accents = True."""
-    if isinstance(input_str, StringIO):
-        input_str = input_str.getvalue()
-    # If you want to handle empty input_str gracefully, do so from caller
-    if len(input_str) == 0:
-        raise ValueError("Empty input_str cannot be parsed!")
+    raise_on_failure: bool = True,
+) -> AsyncIterator[str]:
+    """Parses strings using Morpheus. Unparsable input_strs raise a ValueError.
+    For meaning of arguments, see
+    https://github.com/perseids-tools/morpheus#command-line-options."""
+    if isinstance(inputs, str):
+        # If you want to handle empty input_str gracefully, do so from caller
+        # An empty list doesn't raise
+        if len(inputs) == 0:
+            raise ValueError("Empty input_str cannot be parsed!")
+        inputs = [inputs]
 
     cmd_args, env = _build_cmd_args(
         language,
@@ -124,29 +127,20 @@ async def async_crunch(
         env=env,
         stdin=PIPE,
         stdout=PIPE,
-        stderr=PIPE,
+        stderr=subprocess.STDOUT,
     )
-    stdout, stderr = await proc.communicate(input=input_str.encode("utf-8"))
-
-    if (
-        retry_ignoring_accents
-        and stdout == 0
-        and stderr == input_str
-        and not ignore_accents
-    ):
-        cmd_args.append("-n")
-        proc = await create_subprocess_exec(
-            *cmd_args, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=_build_env()
-        )
-        stdout, stderr = await proc.communicate(input=input_str.encode("utf-8"))
-
-    return _handle_crunch(
-        input_str, stdout, stderr, cast(int, proc.returncode), cmd_args
-    )
+    proc.stdin = cast(StreamWriter, proc.stdin)
+    proc.stdout = cast(StreamReader, proc.stdout)
+    for input_str in inputs:
+        proc_input = (input_str + "\n").encode("utf-8") + _END
+        proc.stdin.write(proc_input)
+        await proc.stdin.drain()
+        buffer = await proc.stdout.readuntil(_END)
+        yield _handle_crunch(input_str, buffer, raise_on_failure)
 
 
 def crunch(
-    input_str: str | StringIO,
+    inputs: str | list[str] | StringIO,
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -156,18 +150,17 @@ def crunch(
     lemma: bool = False,
     perseus_format_off: bool = False,
     verbs_only: bool = False,
-    retry_ignoring_accents: bool = False,
-) -> str:
+    raise_on_failure: bool = True,
+) -> Iterator[str]:
     """Parses a single string using Morpheus. Unparsable input_strs raise a
     ValueError. For meaning of arguments, see
-    https://github.com/perseids-tools/morpheus#command-line-options.
-    retry_ignoring_accents parses with accents and breathings initially, but if
-    this fails, falls back to running as if ignore_accents = True."""
-    if isinstance(input_str, StringIO):
-        input_str = input_str.getvalue()
+    https://github.com/perseids-tools/morpheus#command-line-options."""
     # If you want to handle empty input_strs gracefully, do so from caller
-    if len(input_str) == 0:
-        raise ValueError("Empty input_str cannot be parsed!")
+    # An empty list doesn't raise
+    if isinstance(inputs, str):
+        if len(inputs) == 0:
+            raise ValueError("Empty input_str cannot be parsed!")
+        inputs = [inputs]
 
     cmd_args, env = _build_cmd_args(
         language,
@@ -181,35 +174,33 @@ def crunch(
         verbs_only,
     )
 
-    result = subprocess.run(
+    with subprocess.Popen(
         cmd_args,
         env=env,
-        input=input_str.encode("utf-8"),
-        capture_output=True,
-        check=False,
-    )
-
-    stdout, stderr = result.stdout, result.stderr
-
-    if (
-        retry_ignoring_accents
-        and stdout == 0
-        and stderr == input_str
-        and not ignore_accents
-    ):
-        cmd_args.append("-n")
-        result = subprocess.run(
-            cmd_args,
-            env=env,
-            input=input_str.encode("utf-8"),
-            capture_output=True,
-            check=False,
+        stdin=PIPE,
+        stdout=PIPE,
+        # Merge stdout and stderr
+        stderr=subprocess.STDOUT,
+    ) as proc:
+        proc.stdin, proc.stdout = (
+            cast(BufferedReader, proc.stdin),
+            cast(BufferedReader, proc.stdout),
         )
-        stdout, stderr = result.stdout, result.stderr
+        for input_str in inputs:
+            proc_input = f"{input_str}\n{_SENTINEL}\n"
+            proc.stdin.write(proc_input.encode("utf-8"))
+            proc.stdin.flush()
 
-    return _handle_crunch(
-        input_str, stdout, stderr, result.returncode, cmd_args
-    )
+            buffer = b""
+            while not buffer.endswith(_END):
+                # 65536 is default maximum for pipe buffer
+                # since we're streaming individual inputs,
+                # this should always be sufficient
+                chunk = proc.stdout.read1(65536)
+                if not chunk:
+                    raise RuntimeError("Cruncher exited unexpectedly")
+                buffer += chunk
+            yield _handle_crunch(input_str, buffer, raise_on_failure)
 
 
 def _handle_gen(
