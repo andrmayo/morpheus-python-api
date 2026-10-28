@@ -82,7 +82,7 @@ def _handle_crunch(
     # output is either the STDOUT and STDERR bytes,
     # or a selector.select() object
     raise_on_failure: bool,
-) -> str:
+) -> tuple[str, str]:
     # NOTE: It might be worth logging stderr when raise_on_failure = False
     output_str = buffer[: -len(_END)].decode()
     if not output_str:
@@ -90,9 +90,9 @@ def _handle_crunch(
 
     if len(output_str) - 1 == len(input_str):
         if not raise_on_failure:
-            return output_str
+            return input_str, output_str
         raise ValueError(f"input_str could not be parsed:\n{input_str}")
-    return output_str
+    return input_str, output_str
 
 
 async def _async_crunch_loop_logic(
@@ -100,7 +100,8 @@ async def _async_crunch_loop_logic(
     stdin: StreamWriter,
     stdout: StreamReader,
     raise_on_failure: bool,
-) -> str:
+) -> tuple[str, str]:
+    input_str = input_str.strip()
     proc_input = (input_str + "\n").encode("utf-8") + _END
     stdin.write(proc_input)
     await stdin.drain()
@@ -120,7 +121,7 @@ async def async_crunch(
     perseus_format_off: bool = False,
     verbs_only: bool = False,
     raise_on_failure: bool = True,
-) -> AsyncIterator[str]:
+) -> AsyncIterator[tuple[str, str]]:
     """Parses strings using Morpheus. Unparsable input_strs raise a ValueError.
     For meaning of arguments, see
     https://github.com/perseids-tools/morpheus#command-line-options."""
@@ -176,7 +177,7 @@ def crunch(
     perseus_format_off: bool = False,
     verbs_only: bool = False,
     raise_on_failure: bool = True,
-) -> Iterator[str]:
+) -> Iterator[tuple[str, str]]:
     """Parses a single string using Morpheus. Unparsable input_strs raise a
     ValueError. For meaning of arguments, see
     https://github.com/perseids-tools/morpheus#command-line-options."""
@@ -212,6 +213,7 @@ def crunch(
             cast(BufferedReader, proc.stdout),
         )
         for input_str in inputs:
+            input_str = input_str.strip()
             proc_input = (input_str + "\n").encode("utf-8") + _END
             proc.stdin.write(proc_input)
             proc.stdin.flush()
@@ -232,10 +234,10 @@ def _handle_gen(
     input_str: str,
     buffer: bytes,
     raise_on_failure: bool,
-) -> str:
+) -> tuple[str, str]:
     output_str = buffer[: -len(_GEN_END)].decode()
     if not raise_on_failure:
-        return output_str
+        return input_str, output_str
     if not output_str:
         raise ValueError(
             f"Garbage input.\ninput:\n{input_str}\noutput:\n{output_str}"
@@ -253,7 +255,7 @@ def _handle_gen(
             "Word not properly specified.\n"
             f"input:\n{input_str}\noutput:\n{output_str}"
         )
-    return output_str
+    return input_str, output_str
 
 
 async def _async_gener_loop_logic(
@@ -261,7 +263,8 @@ async def _async_gener_loop_logic(
     stdin: StreamWriter,
     stdout: StreamReader,
     raise_on_failure: bool,
-) -> str:
+) -> tuple[str, str]:
+    input_str = input_str.strip()
     proc_input = (input_str + "\n").encode("utf-8") + _GEN_INPUT_SUFFIX
     stdin.write(proc_input)
     await stdin.drain()
@@ -271,7 +274,7 @@ async def _async_gener_loop_logic(
 
 async def async_gen(
     inputs: str | list[str] | TextIOBase, raise_on_failure: bool = True
-) -> AsyncIterator[str]:
+) -> AsyncIterator[tuple[str, str]]:
     """Generates a parse table from a lemma using Morpheus.
     Unparsable input_strs raise a ValueError."""
     if isinstance(inputs, str):
@@ -296,6 +299,7 @@ async def async_gen(
 
     if isinstance(inputs, AsyncIterator):
         async for input_str in inputs:
+            input_str = input_str.strip()
             yield await _async_gener_loop_logic(
                 input_str, proc.stdin, proc.stdout, raise_on_failure
             )
@@ -308,7 +312,7 @@ async def async_gen(
 
 def gen(
     inputs: str | list[str] | TextIOBase, raise_on_failure: bool = True
-) -> Iterator[str]:
+) -> Iterator[tuple[str, str]]:
     """Generates a parse table from a lemma using Morpheus.
     Unparsable input_strs raise a ValueError."""
     if isinstance(inputs, str):
@@ -327,6 +331,7 @@ def gen(
         proc.stdout = cast(BufferedReader, proc.stdout)
 
         for input_str in inputs:
+            input_str = input_str.strip()
             proc_input = (input_str + "\n").encode("utf-8") + _GEN_INPUT_SUFFIX
             proc.stdin.write(proc_input)
             proc.stdin.flush()

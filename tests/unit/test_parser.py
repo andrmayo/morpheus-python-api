@@ -20,8 +20,11 @@ from morpheus_python_api.parse.parser import (
 
 @pytest.mark.asyncio
 async def test_async_crunch():
-    result = [result async for result in async_crunch("lu/w")][0]
-    assert result == (
+    input_str = "lu/w"
+    result = [result async for result in async_crunch(input_str)][0]
+
+    assert result[0] == input_str
+    assert result[1] == (
         "lu/w\n"
         "<NL>V lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
         "<NL>V lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -29,14 +32,17 @@ async def test_async_crunch():
         "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>\n"
     )
 
+    input_str = "luw/"
     with pytest.raises(ValueError):
         # accent is wrong
-        result = [result async for result in async_crunch("luw/")][0]
+        result = [result async for result in async_crunch(input_str)][0]
 
     result = [
-        result async for result in async_crunch("luw/", ignore_accents=True)
+        result async for result in async_crunch(input_str, ignore_accents=True)
     ][0]
-    assert result == (
+
+    assert result[0] == input_str
+    assert result[1] == (
         "luw/\n"
         "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
         "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -57,8 +63,11 @@ async def test_async_crunch():
 
 
 def test_crunch():
-    result = list(crunch("lu/w"))[0]
-    assert result == (
+    input_str = "lu/w"
+    result = list(crunch(input_str))[0]
+
+    assert result[0] == input_str
+    assert result[1] == (
         "lu/w\n"
         "<NL>V lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
         "<NL>V lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -66,12 +75,15 @@ def test_crunch():
         "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>\n"
     )
 
+    input_str = "luw/"
     with pytest.raises(ValueError):
         # accent is wrong
-        result = list(crunch("luw/"))
+        result = list(crunch(input_str))[0]
 
-    result = list(crunch("luw/", ignore_accents=True))[0]
-    assert result == (
+    result = list(crunch(input_str, ignore_accents=True))[0]
+
+    assert result[0] == input_str
+    assert result[1] == (
         "luw/\n"
         "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
         "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -93,10 +105,11 @@ def test_crunch():
 
 @pytest.mark.asyncio
 async def test_async_gen():
-    result = [
-        result async for result in async_gen(":le:lo/gos\n:no:lo/g os_ou masc")
-    ][0]
-    assert result == (
+    input_str = ":le:lo/gos\n:no:lo/g os_ou masc"
+    result = [result async for result in async_gen(input_str)][0]
+
+    assert result[0] == input_str
+    assert result[1] == (
         "\n:le:lo/gos\n"
         "<G>lo/gos</G>  os_ou masc nom sg\n"
         "<G>lo/gou</G>  os_ou masc gen sg\n"
@@ -129,8 +142,11 @@ async def test_async_gen():
 
 
 def test_gen():
-    result = list(gen(":le:lo/gos\n:no:lo/g os_ou masc"))[0]
-    assert result == (
+    input_str = ":le:lo/gos\n:no:lo/g os_ou masc"
+    result = list(gen(input_str))[0]
+
+    assert result[0] == input_str
+    assert result[1] == (
         "\n:le:lo/gos\n"
         "<G>lo/gos</G>  os_ou masc nom sg\n"
         "<G>lo/gou</G>  os_ou masc gen sg\n"
