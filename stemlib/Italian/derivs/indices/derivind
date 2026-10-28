@@ -1,0 +1,15 @@
+* :conj1:are_vb :conj1:arsi_vb :conj1_c:care_vb :conj1_c:carsi_vb :conj1_ci:ciare_vb :conj1_ci:ciarsi_vb :conj1_g:gare_vb :conj1_g:garsi_vb :conj1_gi:giare_vb :conj1_gi:giarsi_vb :conj2:ere_vb :conj2:ersi_vb :conj3:ire_vb :conj3:irsi_vb :conj_a:arre_vb :conj_o:orre_vb :conj_u:urre_vb
+arsi :arsi_vb:pres:inf:act:impersonal
+ato :are_vb :arsi_vb a/to:are_vb a/to:arsi_vb
+carsi :carsi_vb:pres:inf:act:impersonal
+cato :care_vb :carsi_vb ca/to:care_vb ca/to:carsi_vb
+ciarsi :ciarsi_vb:pres:inf:act:impersonal
+ciato :ciare_vb :ciarsi_vb cia/to:ciare_vb cia/to:ciarsi_vb
+ersi :ersi_vb:pres:inf:act:impersonal
+garsi :garsi_vb:pres:inf:act:impersonal
+gato :gare_vb :garsi_vb ga/to:gare_vb ga/to:garsi_vb
+giarsi :giarsi_vb:pres:inf:act:impersonal
+giato :giare_vb :giarsi_vb gia/to:giare_vb gia/to:giarsi_vb
+irsi :irsi_vb:pres:inf:act:impersonal
+ito :ere_vb :ersi_vb :ire_vb :irsi_vb i/to:ere_vb i/to:ersi_vb i/to:ire_vb i/to:irsi_vb
+otto :urre_vb
