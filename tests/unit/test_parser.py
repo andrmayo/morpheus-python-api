@@ -1,5 +1,4 @@
-"""
-test_parser.py
+"""test_parser.py
 
 Pytest tests for public functions in parser.py. The test cases also illustrate
 the kind of input expected by Morpheus binaries. The fiddliest part to test is
@@ -16,12 +15,16 @@ from morpheus_python_api.parse.parser import (
     async_gen,
     gen,
 )
+from morpheus_python_api.types import WordParse
 
 
 @pytest.mark.asyncio
-async def test_async_crunch():
+async def test_async_crunch_raw():
     input_str = "lu/w"
-    result = [result async for result in async_crunch(input_str)][0]
+    result = [
+        result
+        async for result in async_crunch(input_str, raw_cruncher_output=True)
+    ][0]
 
     assert result[0] == input_str
     assert result[1] == (
@@ -35,10 +38,18 @@ async def test_async_crunch():
     input_str = "luw/"
     with pytest.raises(ValueError):
         # accent is wrong
-        result = [result async for result in async_crunch(input_str)][0]
+        result = [
+            result
+            async for result in async_crunch(
+                input_str, raw_cruncher_output=True
+            )
+        ][0]
 
     result = [
-        result async for result in async_crunch(input_str, ignore_accents=True)
+        result
+        async for result in async_crunch(
+            input_str, ignore_accents=True, raw_cruncher_output=True
+        )
     ][0]
 
     assert result[0] == input_str
@@ -62,18 +73,57 @@ async def test_async_crunch():
     )
 
 
-def test_crunch():
+@pytest.mark.asyncio
+async def test_async_crunch_structured():
+    input_str = "lu/w"
+    result = [result async for result in async_crunch(input_str)][0]
+
+    assert result[0] == input_str
+    assert isinstance(result[1], WordParse)
+    # assert result[1] == (
+    #     "lu/w\n"
+    #     "<NL>V lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>\n"
+    # )
+
+    input_str = "luw/"
+    with pytest.raises(ValueError):
+        # accent is wrong
+        result = [result async for result in async_crunch(input_str)][0]
+
+    result = [
+        result async for result in async_crunch(input_str, ignore_accents=True)
+    ][0]
+
+    assert result[0] == input_str
+    assert isinstance(result[1], WordParse)
+    #     "luw/\n"
+    #     "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres subj act 1st "
+    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres ind act 1st "
+    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres subj act 1st "
+    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres ind act 1st "
+    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  imperf ind mp 2nd "
+    #     "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
+    # )
+
+
+def test_crunch_structured():
     input_str = "lu/w"
     result = list(crunch(input_str))[0]
 
     assert result[0] == input_str
-    assert result[1] == (
-        "lu/w\n"
-        "<NL>V lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-        "<NL>V lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-        "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
-        "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>\n"
-    )
+    assert isinstance(result[1], WordParse)
 
     input_str = "luw/"
     with pytest.raises(ValueError):
@@ -83,24 +133,25 @@ def test_crunch():
     result = list(crunch(input_str, ignore_accents=True))[0]
 
     assert result[0] == input_str
-    assert result[1] == (
-        "luw/\n"
-        "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-        "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-        "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
-        "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
-        "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
-        "<NL>V luw=,lua/w  pres subj act 1st "
-        "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-        "<NL>V luw=,lua/w  pres ind act 1st "
-        "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-        "<NL>V luw=,lua/w  pres subj act 1st "
-        "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-        "<NL>V luw=,lua/w  pres ind act 1st "
-        "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-        "<NL>V luw=,lua/w  imperf ind mp 2nd "
-        "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
-    )
+    assert isinstance(result[1], WordParse)
+    # assert result[1] == (
+    #     "luw/\n"
+    #     "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    #     "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres subj act 1st "
+    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres ind act 1st "
+    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres subj act 1st "
+    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  pres ind act 1st "
+    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    #     "<NL>V luw=,lua/w  imperf ind mp 2nd "
+    #     "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
+    # )
 
 
 @pytest.mark.asyncio

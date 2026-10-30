@@ -1,5 +1,4 @@
-"""parser
-parser.py
+"""parser.py
 
 This module provides thin synchronous and asynchronous wrappers around the
 Morpheus binaries cruncher, gener, and pname. The gener and pname binaries have
@@ -18,7 +17,8 @@ from os import environ
 from typing import cast
 
 from morpheus_python_api.config import bin_path, morphlib_path
-from morpheus_python_api.types import Language
+from morpheus_python_api.parse.decoder import decode_crunch
+from morpheus_python_api.types import Language, WordParse
 
 # sentinel value for end of input
 _SENTINEL = "@@@"
@@ -100,13 +100,21 @@ async def _async_crunch_loop_logic(
     stdin: StreamWriter,
     stdout: StreamReader,
     raise_on_failure: bool,
-) -> tuple[str, str]:
+    language: Language,
+    keep_beta_code,
+    raw_cruncher_output: bool,
+) -> tuple[str, str | WordParse]:
     input_str = input_str.strip()
     proc_input = (input_str + "\n").encode("utf-8") + _END
     stdin.write(proc_input)
     await stdin.drain()
     buffer = await stdout.readuntil(_END)
-    return _handle_crunch(input_str, buffer, raise_on_failure)
+    crunch_output = _handle_crunch(input_str, buffer, raise_on_failure)
+    if raw_cruncher_output:
+        return crunch_output
+    return crunch_output[0], decode_crunch(
+        crunch_output[1], language, keep_beta_code
+    )
 
 
 async def async_crunch(
@@ -120,8 +128,9 @@ async def async_crunch(
     lemma: bool = False,
     perseus_format_off: bool = False,
     verbs_only: bool = False,
+    raw_cruncher_output: bool = False,
     raise_on_failure: bool = True,
-) -> AsyncIterator[tuple[str, str]]:
+) -> AsyncIterator[tuple[str, str | WordParse]]:
     """Parses strings using Morpheus. Unparsable input_strs raise a ValueError.
     For meaning of arguments, see
     https://github.com/perseids-tools/morpheus#command-line-options."""
@@ -156,12 +165,24 @@ async def async_crunch(
     if isinstance(inputs, AsyncIterable):
         async for input_str in inputs:
             yield await _async_crunch_loop_logic(
-                input_str, proc.stdin, proc.stdout, raise_on_failure
+                input_str,
+                proc.stdin,
+                proc.stdout,
+                raise_on_failure,
+                language,
+                keep_beta_code,
+                raw_cruncher_output,
             )
     else:
         for input_str in inputs:
             yield await _async_crunch_loop_logic(
-                input_str, proc.stdin, proc.stdout, raise_on_failure
+                input_str,
+                proc.stdin,
+                proc.stdout,
+                raise_on_failure,
+                language,
+                keep_beta_code,
+                raw_cruncher_output,
             )
 
 
@@ -172,15 +193,22 @@ def crunch(
     ignore_accents: bool = False,
     database_format: bool = False,
     ending_index: bool = False,
+    # This is a bit different from the cruncher binary
+    # since it also keeps betacode when raw_cruncher_output = False
     keep_beta_code: bool = False,
     lemma: bool = False,
     perseus_format_off: bool = False,
     verbs_only: bool = False,
+    raw_cruncher_output: bool = False,
     raise_on_failure: bool = True,
-) -> Iterator[tuple[str, str]]:
+) -> Iterator[tuple[str, str | WordParse]]:
     """Parses a single string using Morpheus. Unparsable input_strs raise a
     ValueError. For meaning of arguments, see
     https://github.com/perseids-tools/morpheus#command-line-options."""
+    if perseus_format_off and not raw_cruncher_output:
+        raise ValueError(
+            "Must return raw cruncher output if perseus_format_off = True"
+        )
     # If you want to handle empty input_strs gracefully, do so from caller
     # An empty list doesn't raise
     if isinstance(inputs, str):
@@ -227,7 +255,14 @@ def crunch(
                 if not chunk:
                     raise RuntimeError("Cruncher exited unexpectedly")
                 buffer += chunk
-            yield _handle_crunch(input_str, buffer, raise_on_failure)
+            crunch_output = _handle_crunch(input_str, buffer, raise_on_failure)
+            if raw_cruncher_output:
+                yield crunch_output
+            else:
+                yield (
+                    crunch_output[0],
+                    decode_crunch(crunch_output[1], language, keep_beta_code),
+                )
 
 
 def _handle_gen(
