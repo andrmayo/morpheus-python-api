@@ -5,10 +5,13 @@ all:
 	@ if [ ! -d perseus-morpheus ]; then git clone --depth 1 --filter blob:none --sparse https://github.com/PerseusDL/morpheus.git perseus-morpheus; fi
 	@ git -C perseus-morpheus sparse-checkout set stemlib/Italian
 	@ cp -r perseus-morpheus/stemlib/Italian morpheus/stemlib
+	# Depending on the version of glibc, main may wind up returning a non-zero exit code
+	# even on a successful run
+	# This sed call patches in an explicit return code of 0
+	@ sed -i -e '/^\treturn 0;$$/d' -e 's/^\tindex_\(noms\|vbs\)(3,0,0,0);$$/&\n\treturn 0;/' \
+		morpheus/src/gkdict/indexnoms.main.c morpheus/src/gkdict/indexvbs.main.c
 	@ cd morpheus/src && CFLAGS='-std=gnu89 -fcommon' make
 
-# This gets spurious error messages because indexnoms returns a garbage status, which main
-# treats as a failure
 install:
 	@ cd morpheus/src && make install
 	@ $(MAKE) build-morphlib
