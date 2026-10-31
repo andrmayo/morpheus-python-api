@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from enum import StrEnum
 from typing import cast
 
-from beta_code import beta_code_to_greek
+from betacode import beta_to_uni
 
 from morpheus_python_api.types import (
     POS,
@@ -64,7 +64,7 @@ def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
             and component not in Tense.__members__
         ):
             morph_parse.vowel_forms = [
-                beta_code_to_greek(form) if keep_betacode else form
+                beta_to_uni(form) if keep_betacode else form
                 for form in component.split(",")
             ]
             verb_parse_fields.pop()
@@ -108,7 +108,7 @@ def decode_crunch(
     # crunches end with a new line, but might as well strip all whitespace
     input_str = input_str.strip()[:-5]  # drop final <\NL>
     lemma, input_str = input_str.split("\n", 1)
-    lemma = lemma if keep_betacode else beta_code_to_greek(lemma)
+    lemma = lemma if keep_betacode else beta_to_uni(lemma)
     # TODO: assume greek verb for now
     word_parse = WordParse(lemma, [])
     for parse in _iter_parses(input_str):
