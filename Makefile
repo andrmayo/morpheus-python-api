@@ -7,6 +7,8 @@ all:
 	@ cp -r perseus-morpheus/stemlib/Italian morpheus/stemlib
 	@ cd morpheus/src && CFLAGS='-std=gnu89 -fcommon' make
 
+# This gets spurious error messages because indexnoms returns a garbage status, which main
+# treats as a failure
 install:
 	@ cd morpheus/src && make install
 	@ $(MAKE) build-morphlib
