@@ -19,6 +19,7 @@ from morpheus_python_api.types import (
     POS,
     Language,
     Mood,
+    Num,
     Person,
     Tense,
     Voice,
@@ -115,7 +116,6 @@ async def test_async_crunch_structured():
         assert parse.language == Language.GREEK
         assert parse.pos == POS.VERB
         assert not parse.case
-        assert not parse.num
         assert not parse.gender
 
     cur_form = word_parse.parses[0]
@@ -123,6 +123,7 @@ async def test_async_crunch_structured():
     assert cur_form.mood == Mood.SUBJ
     assert cur_form.voice == Voice.ACT
     assert cur_form.person == Person.FIRST
+    assert cur_form.num == Num.SG
 
     #     "luw/\n"
     #     "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"

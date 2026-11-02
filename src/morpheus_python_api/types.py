@@ -48,7 +48,7 @@ class Case(StrEnum):
 
 
 class Num(StrEnum):
-    SING = "sing"  # singular
+    SG = "sg"  # singular
     PL = "pl"  # plural
     DUAL = "dual"  # dual
 
