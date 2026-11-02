@@ -31,9 +31,9 @@ def _iter_parses(input_str: str) -> Iterator[str]:
 
 
 def _set_morphparse_field(
-    parse: MorphParse, verb_part: type[StrEnum], fieldname: str
+    parse: MorphParse, word_part: type[StrEnum], fieldname: str
 ):
-    setattr(parse, fieldname, verb_part(fieldname))
+    setattr(parse, word_part.__name__.lower(), word_part(fieldname))
 
 
 def _convert_morpheus_tag(tag: str) -> str:
@@ -52,6 +52,7 @@ def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
     verb_parse_fields = _VERB_PARSE_STACK.copy()
     parse_components = input_str.split()
     parse_components.reverse()
+    # Remove POS tag
     parse_components.pop()
     morph_parse = MorphParse(Language.GREEK, POS.VERB)
     while parse_components and verb_parse_fields:
@@ -61,7 +62,7 @@ def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
         # check for a tense
         if (
             verb_parse_fields[-1] == "vowel_forms"
-            and component not in Tense.__members__
+            and component not in Tense.__members__.values()
         ):
             morph_parse.vowel_forms = [
                 beta_to_uni(form) if keep_betacode else form
@@ -69,13 +70,17 @@ def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
             ]
             verb_parse_fields.pop()
             continue
+        # Any special tags should be processed before this point and the loop
+        # should be continued
         assert (not verb_parse_fields) or hasattr(
             verb_parse_fields[-1], "__members__"
         )
         while (
             verb_parse_fields
             and component
-            not in cast(type[StrEnum], verb_parse_fields[-1]).__members__
+            not in cast(
+                type[StrEnum], verb_parse_fields[-1]
+            ).__members__.values()
         ):
             verb_parse_fields.pop()
         if verb_parse_fields:

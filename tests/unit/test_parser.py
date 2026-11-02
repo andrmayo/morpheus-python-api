@@ -15,7 +15,15 @@ from morpheus_python_api.parse.parser import (
     async_gen,
     gen,
 )
-from morpheus_python_api.types import WordParse
+from morpheus_python_api.types import (
+    POS,
+    Language,
+    Mood,
+    Person,
+    Tense,
+    Voice,
+    WordParse,
+)
 
 
 @pytest.mark.asyncio
@@ -96,9 +104,26 @@ async def test_async_crunch_structured():
     result = [
         result async for result in async_crunch(input_str, ignore_accents=True)
     ][0]
-
     assert result[0] == input_str
-    assert isinstance(result[1], WordParse)
+
+    word_parse = result[1]
+    assert isinstance(word_parse, WordParse)
+    assert word_parse.lemma == "λυώ"
+
+    # things that whould hold for all parses of luw
+    for parse in word_parse.parses:
+        assert parse.language == Language.GREEK
+        assert parse.pos == POS.VERB
+        assert not parse.case
+        assert not parse.num
+        assert not parse.gender
+
+    cur_form = word_parse.parses[0]
+    assert cur_form.tense == Tense.PRES
+    assert cur_form.mood == Mood.SUBJ
+    assert cur_form.voice == Voice.ACT
+    assert cur_form.person == Person.FIRST
+
     #     "luw/\n"
     #     "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
     #     "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"

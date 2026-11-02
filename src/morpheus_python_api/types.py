@@ -90,6 +90,9 @@ class Person(StrEnum):
     THIRD = "third"
 
 
+# NOTE: It's important that field names for these dataclasses be lowercase
+# since they're accessed at certainpoints by doing something like
+# Tense.__name__.lower()
 @dataclass
 class MorphParse:
     # Since this class is part of the API
