@@ -65,7 +65,7 @@ class Tense(StrEnum):
     FUT = "fut"  # future
     AOR = "aor"  # aorist
     PERF = "perf"  # perfect
-    PLUP = "pluperf"  # pluperfect
+    PLUP = "plup"  # pluperfect
     FUTPERF = "futperf"  # future perfect
 
 
@@ -206,6 +206,7 @@ class StemType(StrEnum):
     EX_IGIS = "ex_igis"
     EXCLAM = "exclam"
     EXPLETIVE = "expletive"
+    FUT_PERF = "fut_perf"
     GC_GOS = "gc_gos"
     H_HS = "h_hs"
     HC_EKOS = "hc_ekos"
