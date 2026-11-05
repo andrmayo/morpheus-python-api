@@ -129,7 +129,7 @@ async def test_async_crunch_structured():
     assert cur_form.voice == Voice.ACT
     assert cur_form.person == Person.FIRST
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
     assert (
         cur_form.dialects
         and cur_form.dialects.epic
@@ -151,7 +151,7 @@ async def test_async_crunch_structured():
     assert cur_form.voice == Voice.ACT
     assert cur_form.person == Person.FIRST
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
     assert (
         cur_form.dialects
         and cur_form.dialects.epic
@@ -173,7 +173,7 @@ async def test_async_crunch_structured():
     assert cur_form.voice == Voice.MP
     assert cur_form.person == Person.SECOND
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
 
     # TODO: process the tab seperated fields differently
     assert not cur_form.dialects
@@ -187,7 +187,7 @@ async def test_async_crunch_structured():
     assert cur_form.voice == Voice.MP
     assert cur_form.person == Person.SECOND
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
     assert (
         cur_form.dialects
         and cur_form.dialects.homeric
@@ -257,7 +257,7 @@ def test_crunch_structured():
     assert cur_form.voice == Voice.ACT
     assert cur_form.person == Person.FIRST
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
     assert (
         cur_form.dialects
         and cur_form.dialects.epic
@@ -279,7 +279,7 @@ def test_crunch_structured():
     assert cur_form.voice == Voice.ACT
     assert cur_form.person == Person.FIRST
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
     assert (
         cur_form.dialects
         and cur_form.dialects.epic
@@ -301,7 +301,7 @@ def test_crunch_structured():
     assert cur_form.voice == Voice.MP
     assert cur_form.person == Person.SECOND
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
 
     assert not cur_form.dialects
     assert cur_form.features == frozenset((Feature.CONTR,))
@@ -314,7 +314,7 @@ def test_crunch_structured():
     assert cur_form.voice == Voice.MP
     assert cur_form.person == Person.SECOND
     assert cur_form.num == Num.SG
-    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
     assert (
         cur_form.dialects
         and cur_form.dialects.homeric

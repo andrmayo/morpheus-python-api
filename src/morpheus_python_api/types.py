@@ -495,7 +495,7 @@ class MorphParse:
     # and convert to betacode when needed
     language: Language
     pos: POS
-    vowel_forms: list[str] | None = None
+    dict_forms: list[str] | None = None
     case: Case | None = None
     num: Num | None = None
     gender: Gender | None = None
