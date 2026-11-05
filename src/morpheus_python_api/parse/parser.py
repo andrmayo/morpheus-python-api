@@ -16,6 +16,8 @@ from io import BufferedWriter, BufferedReader, TextIOBase
 from os import environ
 from typing import cast
 
+from betacode import uni_to_beta
+
 from morpheus_python_api.config import bin_path, morphlib_path
 from morpheus_python_api.parse.decoder import decode_crunch
 from morpheus_python_api.types import Language, WordParse
@@ -28,6 +30,15 @@ _END = f"{_SENTINEL}\n".encode("utf-8")
 # but gener does respond with --\n when \n is sent in
 _GEN_INPUT_SUFFIX = "\n\n\n".encode("utf-8")
 _GEN_END = "--\n--\n--\n".encode("utf-8")
+
+
+def _ensure_betacode(text: str) -> str:
+    if any(
+        "\u0370" <= char <= "\u03ff" or "\u1f00" <= char <= "u1FFF"
+        for char in text
+    ):
+        return uni_to_beta(text)
+    return text
 
 
 def _build_env() -> dict[str, str]:
@@ -105,6 +116,16 @@ async def _async_crunch_loop_logic(
     raw_cruncher_output: bool,
 ) -> tuple[str, str | WordParse]:
     input_str = input_str.strip()
+    if language is Language.GREEK:
+        try:
+            _ensure_betacode(input_str)
+        except Exception as e:
+            if raise_on_failure:
+                raise Exception(
+                    f"Encountered error converting input betacode: {e}"
+                )
+            return input_str, input_str
+
     proc_input = (input_str + "\n").encode("utf-8") + _END
     stdin.write(proc_input)
     await stdin.drain()
@@ -112,9 +133,18 @@ async def _async_crunch_loop_logic(
     crunch_output = _handle_crunch(input_str, buffer, raise_on_failure)
     if raw_cruncher_output:
         return crunch_output
-    return crunch_output[0], decode_crunch(
-        crunch_output[1], language, keep_beta_code
-    )
+    try:
+        structured_output = decode_crunch(
+            crunch_output[1], language, keep_beta_code
+        )
+    except Exception as e:
+        if raise_on_failure:
+            raise Exception(
+                f"Encountered error structuring cruncher output: {e}"
+            )
+        return crunch_output[0], crunch_output[0]
+
+    return crunch_output[0], structured_output
 
 
 async def async_crunch(
@@ -129,6 +159,9 @@ async def async_crunch(
     perseus_format_off: bool = False,
     verbs_only: bool = False,
     raw_cruncher_output: bool = False,
+    # intended behavior for raise_on_failure = False is that
+    # where an error gets raised, we just return the tuple
+    # (input, input)
     raise_on_failure: bool = True,
 ) -> AsyncIterator[tuple[str, str | WordParse]]:
     """Parses strings using Morpheus. Unparsable input_strs raise a ValueError.
@@ -200,6 +233,9 @@ def crunch(
     perseus_format_off: bool = False,
     verbs_only: bool = False,
     raw_cruncher_output: bool = False,
+    # intended behavior for raise_on_failure = False is that
+    # where an error gets raised, we just return the tuple
+    # (input, input)
     raise_on_failure: bool = True,
 ) -> Iterator[tuple[str, str | WordParse]]:
     """Parses a single string using Morpheus. Unparsable input_strs raise a
@@ -242,6 +278,8 @@ def crunch(
         )
         for input_str in inputs:
             input_str = input_str.strip()
+            if language is Language.GREEK:
+                input_str = _ensure_betacode(input_str)
             proc_input = (input_str + "\n").encode("utf-8") + _END
             proc.stdin.write(proc_input)
             proc.stdin.flush()
@@ -259,10 +297,18 @@ def crunch(
             if raw_cruncher_output:
                 yield crunch_output
             else:
-                yield (
-                    crunch_output[0],
-                    decode_crunch(crunch_output[1], language, keep_beta_code),
-                )
+                try:
+                    structured_output = decode_crunch(
+                        crunch_output[1], language, keep_beta_code
+                    )
+                    yield crunch_output[0], structured_output
+                except Exception as e:
+                    if raise_on_failure:
+                        raise Exception(
+                            "Encountered error structuring cruncher output: "
+                            f"{e}"
+                        )
+                    yield crunch_output[0], crunch_output[0]
 
 
 def _handle_gen(
