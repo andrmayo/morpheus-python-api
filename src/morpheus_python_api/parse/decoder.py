@@ -25,6 +25,11 @@ from morpheus_python_api.types import (
 _VERB_PARSE_STACK = [Num, Person, Voice, Mood, Tense, "vowel_forms"]
 
 
+def _split_by_first_tab(input_str: str) -> tuple[str, str]:
+    pre_tab, post_tab = input_str.split("\t", 1)
+    return pre_tab, post_tab
+
+
 def _iter_parses(input_str: str) -> Iterator[str]:
     for parse in input_str.split(r"</NL>"):
         yield parse[4:]
@@ -48,9 +53,16 @@ def _convert_morpheus_tag(tag: str) -> str:
     return tag
 
 
+def _process_extra_fields(morph_parse: MorphParse, extra_fields: str) -> None:
+    return
+
+
 def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
+    main_fields, extra_fields = _split_by_first_tab(input_str)
+    _ = extra_fields
+
     verb_parse_fields = _VERB_PARSE_STACK.copy()
-    parse_components = input_str.split()
+    parse_components = main_fields.split()
     parse_components.reverse()
     # Remove POS tag
     parse_components.pop()
@@ -65,7 +77,7 @@ def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
             and component not in Tense.__members__.values()
         ):
             morph_parse.vowel_forms = [
-                beta_to_uni(form) if keep_betacode else form
+                form if keep_betacode else beta_to_uni(form)
                 for form in component.split(",")
             ]
             verb_parse_fields.pop()
@@ -92,6 +104,7 @@ def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
             parse_components.append(component)
 
     # TODO: process less standard data, e.g. dialect information
+    _process_extra_fields(morph_parse, extra_fields)
     return morph_parse
 
 

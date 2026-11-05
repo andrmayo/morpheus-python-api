@@ -7,6 +7,7 @@ that the functions throw the right exceptions for a given STDOUT and STDERR."""
 # The tests aren't very DRY, but the workarounds given synchronous and
 # asynchronous versions of the same function aren't worth the added complexity.
 
+from betacode import beta_to_uni
 import pytest
 
 from morpheus_python_api.parse.parser import (
@@ -113,6 +114,7 @@ async def test_async_crunch_structured():
 
     # things that whould hold for all parses of luw
     for parse in word_parse.parses:
+        print(f"{parse=}")
         assert parse.language == Language.GREEK
         assert parse.pos == POS.VERB
         assert not parse.case
@@ -124,24 +126,42 @@ async def test_async_crunch_structured():
     assert cur_form.voice == Voice.ACT
     assert cur_form.person == Person.FIRST
     assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
 
-    #     "luw/\n"
-    #     "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres subj act 1st "
-    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres ind act 1st "
-    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres subj act 1st "
-    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres ind act 1st "
-    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  imperf ind mp 2nd "
-    #     "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
-    # )
+    cur_form = word_parse.parses[1]
+    assert cur_form.tense == Tense.PRES
+    assert cur_form.mood == Mood.IND
+    assert cur_form.voice == Voice.ACT
+    assert cur_form.person == Person.FIRST
+    assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    cur_form = word_parse.parses[4]
+    assert cur_form.tense == Tense.PRES
+    assert cur_form.mood == Mood.IMPERAT
+    assert cur_form.voice == Voice.MP
+    assert cur_form.person == Person.SECOND
+    assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+
+    # TODO: process the tab seperated fields differently
+
+    # raw output of crunching luw/ ignoring accents:
+    #  "luw/\n"
+    #  "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #  "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    #  "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    #  "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    #  "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
+    #  "<NL>V luw=,lua/w  pres subj act 1st "
+    #  "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    #  "<NL>V luw=,lua/w  pres ind act 1st "
+    #  "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    #  "<NL>V luw=,lua/w  pres subj act 1st "
+    #  "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    #  "<NL>V luw=,lua/w  pres ind act 1st "
+    #  "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    #  "<NL>V luw=,lua/w  imperf ind mp 2nd "
+    #  "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
 
 
 def test_crunch_structured():

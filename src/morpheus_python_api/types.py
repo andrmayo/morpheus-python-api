@@ -73,7 +73,7 @@ class Mood(StrEnum):
     IND = "ind"  # indicative
     SUBJ = "subj"  # subjunctive
     OPT = "opt"  # optative
-    IMPTV = "imptv"  # imperative
+    IMPERAT = "imperat"  # imperative
     INF = "inf"  # infinitive
     PART = "part"  # participle
 
@@ -82,12 +82,20 @@ class Voice(StrEnum):
     ACT = "act"  # active
     MID = "mid"  # middle
     PASS = "pass"  # passive
+    MP = "mp"  # medio-passive
 
 
 class Person(StrEnum):
     FIRST = "first"
     SECOND = "second"
     THIRD = "third"
+
+
+@dataclass
+class Dialect:
+    epic: bool = False
+    ionic: bool = False
+    doric: bool = False
 
 
 # NOTE: It's important that field names for these dataclasses be lowercase
