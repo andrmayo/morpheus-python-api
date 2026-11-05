@@ -11,11 +11,15 @@ from betacode import beta_to_uni
 
 from morpheus_python_api.types import (
     POS,
+    Deriv,
+    Dialects,
+    Feature,
     Language,
     Mood,
     MorphParse,
     Num,
     Person,
+    StemType,
     Tense,
     Voice,
     WordParse,
@@ -54,7 +58,27 @@ def _convert_morpheus_tag(tag: str) -> str:
 
 
 def _process_extra_fields(morph_parse: MorphParse, extra_fields: str) -> None:
-    return
+    fields = extra_fields.split("\t")
+    assert len(fields) == 3
+    dialects = fields[0].split()
+    features = fields[1].split()
+    stem_deriv = [f for f in fields[2].split(",") if len(f)]
+
+    if len(dialects):
+        morph_parse.dialects = Dialects()
+    for dial in dialects:
+        assert dial in Dialects.__dataclass_fields__
+        setattr(morph_parse.dialects, dial, True)
+
+    morph_parse.features = frozenset(Feature(feat) for feat in features)
+
+    assert 0 < len(stem_deriv) < 3
+    if len(stem_deriv) > 0:
+        stem = stem_deriv[0]
+        morph_parse.stem_type = StemType(stem)
+    if len(stem_deriv) > 1:
+        deriv = stem_deriv[1]
+        morph_parse.deriv = Deriv(deriv)
 
 
 def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:

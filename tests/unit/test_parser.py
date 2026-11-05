@@ -18,10 +18,13 @@ from morpheus_python_api.parse.parser import (
 )
 from morpheus_python_api.types import (
     POS,
+    Deriv,
+    Feature,
     Language,
     Mood,
     Num,
     Person,
+    StemType,
     Tense,
     Voice,
     WordParse,
@@ -127,6 +130,20 @@ async def test_async_crunch_structured():
     assert cur_form.person == Person.FIRST
     assert cur_form.num == Num.SG
     assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert (
+        cur_form.dialects
+        and cur_form.dialects.epic
+        and not cur_form.dialects.aeolic
+        and not cur_form.dialects.attic
+        and not cur_form.dialects.doric
+        and not cur_form.dialects.homeric
+        and not cur_form.dialects.ionic
+        and not cur_form.dialects.parad_form
+        and not cur_form.dialects.prose
+    )
+    assert cur_form.features == frozenset()
+    assert cur_form.stem_type == StemType.W_STEM
+    assert cur_form.deriv == Deriv.REG_CONJ
 
     cur_form = word_parse.parses[1]
     assert cur_form.tense == Tense.PRES
@@ -135,6 +152,21 @@ async def test_async_crunch_structured():
     assert cur_form.person == Person.FIRST
     assert cur_form.num == Num.SG
     assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert (
+        cur_form.dialects
+        and cur_form.dialects.epic
+        and not cur_form.dialects.aeolic
+        and not cur_form.dialects.attic
+        and not cur_form.dialects.doric
+        and not cur_form.dialects.homeric
+        and not cur_form.dialects.ionic
+        and not cur_form.dialects.parad_form
+        and not cur_form.dialects.prose
+    )
+    assert cur_form.features == frozenset()
+    assert cur_form.stem_type == StemType.W_STEM
+    assert cur_form.deriv == Deriv.REG_CONJ
+
     cur_form = word_parse.parses[4]
     assert cur_form.tense == Tense.PRES
     assert cur_form.mood == Mood.IMPERAT
@@ -144,6 +176,32 @@ async def test_async_crunch_structured():
     assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
 
     # TODO: process the tab seperated fields differently
+    assert not cur_form.dialects
+    assert cur_form.features == frozenset((Feature.CONTR,))
+    assert cur_form.stem_type == StemType.AW_PR
+    assert cur_form.deriv == Deriv.AW_DENOM
+
+    cur_form = word_parse.parses[9]
+    assert cur_form.tense == Tense.IMPFERF
+    assert cur_form.mood == Mood.IND
+    assert cur_form.voice == Voice.MP
+    assert cur_form.person == Person.SECOND
+    assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert (
+        cur_form.dialects
+        and cur_form.dialects.homeric
+        and cur_form.dialects.ionic
+        and not cur_form.dialects.aeolic
+        and not cur_form.dialects.attic
+        and not cur_form.dialects.doric
+        and not cur_form.dialects.epic
+        and not cur_form.dialects.parad_form
+        and not cur_form.dialects.prose
+    )
+    assert cur_form.features == frozenset((Feature.CONTR, Feature.UNAUGMENTED))
+    assert cur_form.stem_type == StemType.AW_PR
+    assert cur_form.deriv == Deriv.AW_DENOM
 
     # raw output of crunching luw/ ignoring accents:
     #  "luw/\n"
@@ -180,24 +238,114 @@ def test_crunch_structured():
 
     assert result[0] == input_str
     assert isinstance(result[1], WordParse)
-    # assert result[1] == (
-    #     "luw/\n"
-    #     "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
-    #     "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres subj act 1st "
-    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres ind act 1st "
-    #     "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres subj act 1st "
-    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  pres ind act 1st "
-    #     "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-    #     "<NL>V luw=,lua/w  imperf ind mp 2nd "
-    #     "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
-    # )
+
+    word_parse = result[1]
+    assert isinstance(word_parse, WordParse)
+    assert word_parse.lemma == "λυώ"
+
+    # things that whould hold for all parses of luw
+    for parse in word_parse.parses:
+        print(f"{parse=}")
+        assert parse.language == Language.GREEK
+        assert parse.pos == POS.VERB
+        assert not parse.case
+        assert not parse.gender
+
+    cur_form = word_parse.parses[0]
+    assert cur_form.tense == Tense.PRES
+    assert cur_form.mood == Mood.SUBJ
+    assert cur_form.voice == Voice.ACT
+    assert cur_form.person == Person.FIRST
+    assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert (
+        cur_form.dialects
+        and cur_form.dialects.epic
+        and not cur_form.dialects.aeolic
+        and not cur_form.dialects.attic
+        and not cur_form.dialects.doric
+        and not cur_form.dialects.homeric
+        and not cur_form.dialects.ionic
+        and not cur_form.dialects.parad_form
+        and not cur_form.dialects.prose
+    )
+    assert cur_form.features == frozenset()
+    assert cur_form.stem_type == StemType.W_STEM
+    assert cur_form.deriv == Deriv.REG_CONJ
+
+    cur_form = word_parse.parses[1]
+    assert cur_form.tense == Tense.PRES
+    assert cur_form.mood == Mood.IND
+    assert cur_form.voice == Voice.ACT
+    assert cur_form.person == Person.FIRST
+    assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert (
+        cur_form.dialects
+        and cur_form.dialects.epic
+        and not cur_form.dialects.aeolic
+        and not cur_form.dialects.attic
+        and not cur_form.dialects.doric
+        and not cur_form.dialects.homeric
+        and not cur_form.dialects.ionic
+        and not cur_form.dialects.parad_form
+        and not cur_form.dialects.prose
+    )
+    assert cur_form.features == frozenset()
+    assert cur_form.stem_type == StemType.W_STEM
+    assert cur_form.deriv == Deriv.REG_CONJ
+
+    cur_form = word_parse.parses[4]
+    assert cur_form.tense == Tense.PRES
+    assert cur_form.mood == Mood.IMPERAT
+    assert cur_form.voice == Voice.MP
+    assert cur_form.person == Person.SECOND
+    assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+
+    assert not cur_form.dialects
+    assert cur_form.features == frozenset((Feature.CONTR,))
+    assert cur_form.stem_type == StemType.AW_PR
+    assert cur_form.deriv == Deriv.AW_DENOM
+
+    cur_form = word_parse.parses[9]
+    assert cur_form.tense == Tense.IMPFERF
+    assert cur_form.mood == Mood.IND
+    assert cur_form.voice == Voice.MP
+    assert cur_form.person == Person.SECOND
+    assert cur_form.num == Num.SG
+    assert cur_form.vowel_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert (
+        cur_form.dialects
+        and cur_form.dialects.homeric
+        and cur_form.dialects.ionic
+        and not cur_form.dialects.aeolic
+        and not cur_form.dialects.attic
+        and not cur_form.dialects.doric
+        and not cur_form.dialects.epic
+        and not cur_form.dialects.parad_form
+        and not cur_form.dialects.prose
+    )
+    assert cur_form.features == frozenset((Feature.CONTR, Feature.UNAUGMENTED))
+    assert cur_form.stem_type == StemType.AW_PR
+    assert cur_form.deriv == Deriv.AW_DENOM
+
+    # "luw/\n"
+    # "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    # "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
+    # "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    # "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
+    # "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
+    # "<NL>V luw=,lua/w  pres subj act 1st "
+    # "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    # "<NL>V luw=,lua/w  pres ind act 1st "
+    # "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
+    # "<NL>V luw=,lua/w  pres subj act 1st "
+    # "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    # "<NL>V luw=,lua/w  pres ind act 1st "
+    # "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
+    # "<NL>V luw=,lua/w  imperf ind mp 2nd "
+    # "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
 
 
 @pytest.mark.asyncio
