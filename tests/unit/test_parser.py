@@ -264,6 +264,7 @@ async def _process_async_crunch_structured_greek_noun():
     )
 
 
+# greek participle test
 async def _process_async_crunch_structured_greek_part():
     input_str = "lu/ousa"
     result = [result async for result in async_crunch(input_str)][0]
@@ -271,28 +272,33 @@ async def _process_async_crunch_structured_greek_part():
     word_parse = result[1]
     assert isinstance(word_parse, WordParse)
     assert word_parse.lemma == beta_to_uni(input_str)
-    assert len(word_parse.parses) == 1
+    assert len(word_parse.parses) == 2
 
     morph_parse = word_parse.parses[0]
 
     assert all(
         [
             morph_parse.person is None,
-            morph_parse.tense is None,
-            morph_parse.voice is None,
-            morph_parse.mood is None,
-            morph_parse.dialect is None,
+            _in_frozen_set(
+                [Dialect.ATTIC, Dialect.EPIC, Dialect.DORIC, Dialect.IONIC],
+                morph_parse.dialect,
+            ),
             morph_parse.features is None,
         ]
     )
 
     assert all(
         [
-            morph_parse.gender is Gender.MASC,
-            morph_parse.case is Case.NOM,
-            morph_parse.num is Num.SG,
+            _in_frozen_set(Gender.FEM, morph_parse.gender),
+            _in_frozen_set([Case.NOM, Case.VOC], morph_parse.case),
+            _in_frozen_set(Num.SG, morph_parse.num),
         ]
     )
+
+    # <NL>P lu/w  pres part act fem nom/voc sg
+    # \tattic epic doric ionic\t\tw_stem,reg_conj</NL>
+    # <NL>P lu_/ousa,lu/w  pres part act fem nom/voc sg
+    # \tattic epic doric ionic\t\tw_stem,reg_conj</NL>
 
 
 def test_crunch_structured():

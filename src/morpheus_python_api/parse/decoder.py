@@ -32,7 +32,7 @@ from morpheus_python_api.types import (
 # We need gender because Italian gerundives are parsed as verbs
 _VERB_PARSE_STACK = [Num, Person, Voice, Gender, Mood, Tense, "dict_forms"]
 _NOUN_PARSE_STACK = [Num, Case, Degree, Gender, "dict_forms"]
-_PART_PARSE_STACK = [Num, Gender, Voice, Mood, Tense]
+_PART_PARSE_STACK = [Num, Case, Gender, Voice, Mood, Tense, "dict_forms"]
 
 
 def _split_by_first_tab(input_str: str) -> tuple[str, str]:
@@ -203,6 +203,60 @@ def _decode_noun(
     return morph_parse
 
 
+# For participles
+def _decode_part(
+    input_str: str, language: Language, keep_betacode: bool
+) -> MorphParse:
+    main_fields, extra_fields = _split_by_first_tab(input_str)
+
+    part_parse_fields = _PART_PARSE_STACK.copy()
+    parse_components = main_fields.split()
+    parse_components.reverse()
+    # Remove POS tag
+    parse_components.pop()
+    morph_parse = MorphParse(language, POS.PART)
+    while parse_components and part_parse_fields:
+        component = _convert_morpheus_tag(parse_components.pop())
+        # Special case: when short-vowel and long-vowel forms are given
+        # Since tense has to follow these forms when they're present, we can
+        # check for a tense
+        if (
+            part_parse_fields[-1] == "dict_forms"
+            and component[0] not in Tense.__members__.values()
+        ):
+            # _convert_morpheus_tag will erroneously split
+            # dict_forms
+            component = "/".join(component)
+            morph_parse.dict_forms = [
+                beta_to_uni(form)
+                if (language is Language.GREEK and not keep_betacode)
+                else form
+                for form in component.split(",")
+            ]
+            part_parse_fields.pop()
+            continue
+        # Any special tags should be processed before this point and the loop
+        # should be continued
+        assert (not part_parse_fields) or hasattr(
+            part_parse_fields[-1], "__members__"
+        )
+        while (
+            part_parse_fields
+            and component[0]
+            not in cast(
+                type[StrEnum], part_parse_fields[-1]
+            ).__members__.values()
+        ):
+            part_parse_fields.pop()
+        if part_parse_fields:
+            # these are assumed to be lower case
+            part_part = part_parse_fields.pop()
+            _set_morphparse_field(morph_parse, part_part, component)
+
+    _process_extra_fields(morph_parse, extra_fields)
+    return morph_parse
+
+
 def decode_crunch(
     input_str: str, language: str | Language, keep_betacode: bool = False
 ) -> WordParse:
@@ -233,4 +287,10 @@ def decode_crunch(
             word_parse.parses.append(
                 _decode_noun(parse, language, keep_betacode)
             )
+        elif parse[0] == "P":
+            word_parse.parses.append(
+                _decode_part(parse, language, keep_betacode)
+            )
+        else:
+            raise ValueError(f"POS not recognized, with POS input {parse[0]}")
     return word_parse
