@@ -12,6 +12,7 @@ from betacode import beta_to_uni
 from morpheus_python_api.types import (
     POS,
     Case,
+    Degree,
     Deriv,
     Dialect,
     Feature,
@@ -30,7 +31,7 @@ from morpheus_python_api.types import (
 
 # We need gender because Italian gerundives are parsed as verbs
 _VERB_PARSE_STACK = [Num, Person, Voice, Gender, Mood, Tense, "dict_forms"]
-_NOUN_PARSE_STACK = [Num, Case, Gender, "dict_forms"]
+_NOUN_PARSE_STACK = [Num, Case, Degree, Gender, "dict_forms"]
 _PART_PARSE_STACK = [Num, Gender, Voice, Mood, Tense]
 
 

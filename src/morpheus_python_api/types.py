@@ -68,6 +68,7 @@ class Tense(StrEnum):
     PLUP = "plup"  # pluperfect
     FUTPERF = "futperf"  # future perfect
     GERUNDIVE = "gerundive"  # Italian, doubles for tense
+    PASTABS = "pastabs"  # Italian passato remoto
 
 
 class Mood(StrEnum):
@@ -94,6 +95,11 @@ class Person(StrEnum):
     THIRD = "third"
 
 
+class Degree(StrEnum):
+    COMP = "comp"
+    SUPERL = "superl"
+
+
 # Note that Latin always has no specified dialects
 # and that morphkeys.h also accepts non_homeric_epic and ionic/homeric,
 # but these aren't actually produced by any cruncher parse
@@ -118,7 +124,9 @@ class StemType(StrEnum):
     ZERO_ADJ3 = "0_adj3"
     ZERO_I = "0_i"
     ZERO_IS = "0_is"
+    A_ACC = "a_acc"
     A_AE = "a_ae"
+    A_E = "a_e"
     A_HS = "a_hs"
     ADVERB = "adverb"
     AH_AHS = "ah_ahs"
@@ -161,16 +169,25 @@ class StemType(StrEnum):
     C_KOS = "c_kos"
     C_KTOS = "c_ktos"
     C_XOS = "c_xos"
+    CO_CA = "co_ca"
     CONJ = "conj"
     CONJ1 = "conj1"
+    CONJ1_C = "conj1_c"
+    CONJ1_CI = "conj1_ci"
+    CONJ1_G = "conj1_g"
+    CONJ1_GI = "conj1_gi"
     CONJ2 = "conj2"
     CONJ3 = "conj3"
     CONJ3_IO = "conj3_io"
     CONJ4 = "conj4"
+    CONJ_A = "conj_a"
+    CONJ_O = "conj_o"
+    CONJ_U = "conj_u"
     DEMONSTR = "demonstr"
     ELR_ELRIS = "eLr_eLris"
     ELS_ERIS = "eLs_eris"
     E_ES = "e_es"
+    E_I = "e_i"
     EH_EHS = "eh_ehs"
     EHS_EOU = "ehs_eou"
     EIS_ENOS = "eis_enos"
@@ -210,6 +227,7 @@ class StemType(StrEnum):
     EXPLETIVE = "expletive"
     FUT_PERF = "fut_perf"
     GC_GOS = "gc_gos"
+    GO_GA = "go_ga"
     H_HS = "h_hs"
     HC_EKOS = "hc_ekos"
     HEIS_HESSA = "heis_hessa"
@@ -222,12 +240,14 @@ class StemType(StrEnum):
     INDECL_NOUN = "indecl_noun"
     INDEF = "indef"
     INTERROG = "interrog"
+    IO_I = "io_i"
     IOR_IUS_COMP = "ior_ius_comp"
     IOS_I = "ios_i"
     IRREG_ADJ1 = "irreg_adj1"
     IRREG_ADJ3 = "irreg_adj3"
     IRREG_DECL3 = "irreg_decl3"
     IRREG_MI = "irreg_mi"
+    IRREG_NOM = "irreg_nom"
     IRREG_NOM2 = "irreg_nom2"
     IRREG_NOM3 = "irreg_nom3"
     IRREG_PP1 = "irreg_pp1"
@@ -257,7 +277,9 @@ class StemType(StrEnum):
     NUMERAL = "numeral"
     OLN_OLNIS = "oLn_oLnis"
     OLN_ONIS = "oLn_onis"
+    O_A = "o_a"
     O_ELNIS = "o_eLnis"
+    O_I = "o_i"
     O_INIS = "o_inis"
     O_OLNIS = "o_oLnis"
     O_ONIS = "o_onis"
@@ -324,6 +346,7 @@ class StemType(StrEnum):
     TAS_TATIS = "tas_tatis"
     ULS_ULRIS = "uLs_uLris"
     ULS_UOS = "uLs_uos"
+    U_ACC = "u_acc"
     UMI_PR = "umi_pr"
     UNS_UNTIS = "uns_untis"
     UR_ORIS = "ur_oris"
@@ -375,21 +398,34 @@ class Deriv(StrEnum):
     ALLW = "allw"
     ANW = "anw"
     ARE_VB = "are_vb"
+    ARRE_VB = "arre_vb"
+    ARSI_VB = "arsi_vb"
     AV_STEM = "av_stem"
     AW_DENOM = "aw_denom"
     AZW = "azw"
+    CARE_VB = "care_vb"
+    CARSI_VB = "carsi_vb"
+    CIARE_VB = "ciare_vb"
+    CIARSI_VB = "ciarsi_vb"
     E_STEM = "e_stem"
     E_SUPPL = "e_suppl"
     EINW = "einw"
     EIRW = "eirw"
     ELLW = "ellw"
+    ERE_VB = "ere_vb"
+    ERSI_VB = "ersi_vb"
     EUW = "euw"
     EV_STEM = "ev_stem"
     EW_DENOM = "ew_denom"
+    GARE_VB = "gare_vb"
+    GARSI_VB = "garsi_vb"
+    GIARE_VB = "giare_vb"
+    GIARSI_VB = "giarsi_vb"
     IAW_DENOM = "iaw_denom"
     ILLW = "illw"
     INW = "inw"
     IRE_VB = "ire_vb"
+    IRSI_VB = "irsi_vb"
     ISKW = "iskw"
     IZW = "izw"
     NDW = "ndw"
@@ -397,6 +433,7 @@ class Deriv(StrEnum):
     NUMI = "numi"
     NW = "nw"
     O_STEM = "o_stem"
+    ORRE_VB = "orre_vb"
     OW_DENOM = "ow_denom"
     OZW = "ozw"
     PTW = "ptw"
@@ -405,6 +442,7 @@ class Deriv(StrEnum):
     SS = "ss"
     ULLW = "ullw"
     UNW = "unw"
+    URRE_VB = "urre_vb"
     URW = "urw"
     UZW = "uzw"
 
@@ -506,6 +544,7 @@ class MorphParse:
     mood: frozenset[Mood] | None = None
     voice: frozenset[Voice] | None = None
     person: frozenset[Person] | None = None
+    degree: frozenset[Degree] | None = None
 
     dialect: frozenset[Dialect] | None = None
     features: frozenset[Feature] | None = None
