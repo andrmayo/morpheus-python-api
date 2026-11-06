@@ -18,8 +18,10 @@ from morpheus_python_api.parse.parser import (
 )
 from morpheus_python_api.types import (
     POS,
+    Case,
     Deriv,
     Feature,
+    Gender,
     Language,
     Mood,
     Num,
@@ -88,6 +90,11 @@ async def test_async_crunch_raw():
 
 @pytest.mark.asyncio
 async def test_async_crunch_structured():
+    await _process_async_crunch_structured_greek_verb()
+    await _process_async_crunch_structured_greek_noun()
+
+
+async def _process_async_crunch_structured_greek_verb():
     input_str = "lu/w"
     result = [result async for result in async_crunch(input_str)][0]
 
@@ -220,6 +227,38 @@ async def test_async_crunch_structured():
     #  "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
     #  "<NL>V luw=,lua/w  imperf ind mp 2nd "
     #  "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
+
+
+async def _process_async_crunch_structured_greek_noun():
+    input_str = "lo/gos"
+    result = [result async for result in async_crunch(input_str)][0]
+    assert result[0] == input_str
+    word_parse = result[1]
+    assert isinstance(word_parse, WordParse)
+    assert word_parse.lemma == beta_to_uni(input_str)
+    assert len(word_parse.parses) == 1
+
+    morph_parse = word_parse.parses[0]
+
+    assert all(
+        [
+            morph_parse.person is None,
+            morph_parse.tense is None,
+            morph_parse.voice is None,
+            morph_parse.mood is None,
+            morph_parse.dialects is None,
+            isinstance(morph_parse.features, frozenset)
+            and not len(morph_parse.features),
+        ]
+    )
+
+    assert all(
+        [
+            morph_parse.gender is Gender.MASC,
+            morph_parse.case is Case.NOM,
+            morph_parse.num is Num.SG,
+        ]
+    )
 
 
 def test_crunch_structured():

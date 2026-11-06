@@ -11,9 +11,11 @@ from betacode import beta_to_uni
 
 from morpheus_python_api.types import (
     POS,
+    Case,
     Deriv,
     Dialects,
     Feature,
+    Gender,
     Language,
     Mood,
     MorphParse,
@@ -26,7 +28,8 @@ from morpheus_python_api.types import (
 )
 
 
-_VERB_PARSE_STACK = [Num, Person, Voice, Mood, Tense, "vowel_forms"]
+_VERB_PARSE_STACK = [Num, Person, Voice, Mood, Tense, "dict_forms"]
+_NOUN_PARSE_STACK = [Num, Case, Gender, "dict_forms"]
 
 
 def _split_by_first_tab(input_str: str) -> tuple[str, str]:
@@ -81,27 +84,33 @@ def _process_extra_fields(morph_parse: MorphParse, extra_fields: str) -> None:
         morph_parse.deriv = Deriv(deriv)
 
 
-def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
+# NOTE: Dispatch to _decode_verb, _decode_noun etc. is not very DRY
+# at the moment, but it's worth keeping for now in case more custom
+# logic is needed for a given POS
+def _decode_verb(
+    input_str: str, language: Language, keep_betacode: bool
+) -> MorphParse:
     main_fields, extra_fields = _split_by_first_tab(input_str)
-    _ = extra_fields
 
     verb_parse_fields = _VERB_PARSE_STACK.copy()
     parse_components = main_fields.split()
     parse_components.reverse()
     # Remove POS tag
     parse_components.pop()
-    morph_parse = MorphParse(Language.GREEK, POS.VERB)
+    morph_parse = MorphParse(language, POS.VERB)
     while parse_components and verb_parse_fields:
         component = _convert_morpheus_tag(parse_components.pop())
         # Special case: when short-vowel and long-vowel forms are given
         # Since tense has to follow these forms when they're present, we can
         # check for a tense
         if (
-            verb_parse_fields[-1] == "vowel_forms"
+            verb_parse_fields[-1] == "dict_forms"
             and component not in Tense.__members__.values()
         ):
-            morph_parse.vowel_forms = [
-                form if keep_betacode else beta_to_uni(form)
+            morph_parse.dict_forms = [
+                beta_to_uni(form)
+                if (language is Language.GREEK and not keep_betacode)
+                else form
                 for form in component.split(",")
             ]
             verb_parse_fields.pop()
@@ -127,7 +136,60 @@ def _decode_greek_verb(input_str: str, keep_betacode: bool) -> MorphParse:
             # keep last component for processing less standard data
             parse_components.append(component)
 
-    # TODO: process less standard data, e.g. dialect information
+    _process_extra_fields(morph_parse, extra_fields)
+    return morph_parse
+
+
+def _decode_noun(
+    input_str: str, language: Language, keep_betacode: bool
+) -> MorphParse:
+    main_fields, extra_fields = _split_by_first_tab(input_str)
+
+    noun_parse_fields = _NOUN_PARSE_STACK.copy()
+    parse_components = main_fields.split()
+    parse_components.reverse()
+    # Remove POS tag
+    parse_components.pop()
+    morph_parse = MorphParse(language, POS.NOUN)
+
+    while parse_components and noun_parse_fields:
+        component = _convert_morpheus_tag(parse_components.pop())
+        # Special case: when short-vowel and long-vowel forms are given
+        # Since tense has to follow these forms when they're present, we can
+        # check for a tense
+        if (
+            noun_parse_fields[-1] == "dict_forms"
+            and component not in Gender.__members__.values()
+        ):
+            morph_parse.dict_forms = [
+                beta_to_uni(form)
+                if (language is Language.GREEK and not keep_betacode)
+                else form
+                for form in component.split(",")
+            ]
+            noun_parse_fields.pop()
+            continue
+        # Any special tags should be processed before this point and the loop
+        # should be continued
+        assert (not noun_parse_fields) or hasattr(
+            noun_parse_fields[-1], "__members__"
+        )
+        while (
+            noun_parse_fields
+            and component
+            not in cast(
+                type[StrEnum], noun_parse_fields[-1]
+            ).__members__.values()
+        ):
+            noun_parse_fields.pop()
+        if noun_parse_fields:
+            # these are assumed to be lower case
+            noun_part = noun_parse_fields.pop()
+            _set_morphparse_field(morph_parse, noun_part, component)
+        else:
+            # keep last component for processing less standard data
+            parse_components.append(component)
+
     _process_extra_fields(morph_parse, extra_fields)
     return morph_parse
 
@@ -155,22 +217,11 @@ def decode_crunch(
     word_parse = WordParse(lemma, [])
     for parse in _iter_parses(input_str):
         if parse[0] == "V":
-            word_parse.parses.append(_decode_greek_verb(parse, keep_betacode))
+            word_parse.parses.append(
+                _decode_verb(parse, language, keep_betacode)
+            )
+        elif parse[0] == "N":
+            word_parse.parses.append(
+                _decode_noun(parse, language, keep_betacode)
+            )
     return word_parse
-
-    # "luw/\n"
-    # "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-    # "<NL>V lu/w,lu/w  pres ind act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
-    # "<NL>V lu_/w,lu/w  pres subj act 1st sg\t\t\tw_stem,reg_conj</NL>"
-    # "<NL>V lu_/w,lu/w  pres ind act 1st sg\t\t\tw_stem,reg_conj</NL>"
-    # "<NL>V luw=,lua/w  pres imperat mp 2nd sg\t\tcontr\taw_pr,aw_denom</NL>"
-    # "<NL>V luw=,lua/w  pres subj act 1st "
-    # "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-    # "<NL>V luw=,lua/w  pres ind act 1st "
-    # "sg\tattic epic ionic\tcontr\taw_pr,aw_denom</NL>"
-    # "<NL>V luw=,lua/w  pres subj act 1st "
-    # "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-    # "<NL>V luw=,lua/w  pres ind act 1st "
-    # "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
-    # "<NL>V luw=,lua/w  imperf ind mp 2nd "
-    # "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
