@@ -7,8 +7,10 @@ that the functions throw the right exceptions for a given STDOUT and STDERR."""
 # The tests aren't very DRY, but the workarounds given synchronous and
 # asynchronous versions of the same function aren't worth the added complexity.
 
-from betacode import beta_to_uni
+from enum import StrEnum
 import pytest
+
+from betacode import beta_to_uni
 
 from morpheus_python_api.parse.parser import (
     async_crunch,
@@ -20,6 +22,7 @@ from morpheus_python_api.types import (
     POS,
     Case,
     Deriv,
+    Dialect,
     Feature,
     Gender,
     Language,
@@ -31,6 +34,17 @@ from morpheus_python_api.types import (
     Voice,
     WordParse,
 )
+
+
+def _in_frozen_set(
+    field_values: str | StrEnum | list[str | StrEnum],
+    fr_set: frozenset[str | StrEnum] | None,
+):
+    if not fr_set:
+        return False
+    if not isinstance(field_values, list):
+        field_values = [field_values]
+    return all(fv in fr_set for fv in field_values)
 
 
 @pytest.mark.asyncio
@@ -92,6 +106,7 @@ async def test_async_crunch_raw():
 async def test_async_crunch_structured():
     await _process_async_crunch_structured_greek_verb()
     await _process_async_crunch_structured_greek_noun()
+    await _process_async_crunch_structured_greek_part()
 
 
 async def _process_async_crunch_structured_greek_verb():
@@ -124,91 +139,80 @@ async def _process_async_crunch_structured_greek_verb():
 
     # things that whould hold for all parses of luw
     for parse in word_parse.parses:
-        print(f"{parse=}")
         assert parse.language == Language.GREEK
         assert parse.pos == POS.VERB
-        assert not parse.case
-        assert not parse.gender
+        assert parse.case is None
+        assert parse.gender is None
 
     cur_form = word_parse.parses[0]
-    assert cur_form.tense == Tense.PRES
-    assert cur_form.mood == Mood.SUBJ
-    assert cur_form.voice == Voice.ACT
-    assert cur_form.person == Person.FIRST
-    assert cur_form.num == Num.SG
-    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
-    assert (
-        cur_form.dialects
-        and cur_form.dialects.epic
-        and not cur_form.dialects.aeolic
-        and not cur_form.dialects.attic
-        and not cur_form.dialects.doric
-        and not cur_form.dialects.homeric
-        and not cur_form.dialects.ionic
-        and not cur_form.dialects.parad_form
-        and not cur_form.dialects.prose
+    assert all(
+        [
+            _in_frozen_set(Tense.PRES, cur_form.tense),
+            _in_frozen_set(Mood.SUBJ, cur_form.mood),
+            _in_frozen_set(Voice.ACT, cur_form.voice),
+            _in_frozen_set(Person.FIRST, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+            _in_frozen_set(Dialect.EPIC, cur_form.dialect),
+            cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")],
+        ]
     )
-    assert cur_form.features == frozenset()
-    assert cur_form.stem_type == StemType.W_STEM
-    assert cur_form.deriv == Deriv.REG_CONJ
+
+    assert cur_form.features is None
+    assert cur_form.stem_type is StemType.W_STEM
+    assert cur_form.deriv is Deriv.REG_CONJ
 
     cur_form = word_parse.parses[1]
-    assert cur_form.tense == Tense.PRES
-    assert cur_form.mood == Mood.IND
-    assert cur_form.voice == Voice.ACT
-    assert cur_form.person == Person.FIRST
-    assert cur_form.num == Num.SG
-    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
-    assert (
-        cur_form.dialects
-        and cur_form.dialects.epic
-        and not cur_form.dialects.aeolic
-        and not cur_form.dialects.attic
-        and not cur_form.dialects.doric
-        and not cur_form.dialects.homeric
-        and not cur_form.dialects.ionic
-        and not cur_form.dialects.parad_form
-        and not cur_form.dialects.prose
+    assert all(
+        [
+            _in_frozen_set(Tense.PRES, cur_form.tense),
+            _in_frozen_set(Mood.IND, cur_form.mood),
+            _in_frozen_set(Voice.ACT, cur_form.voice),
+            _in_frozen_set(Person.FIRST, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+            _in_frozen_set(Dialect.EPIC, cur_form.dialect),
+        ]
     )
-    assert cur_form.features == frozenset()
-    assert cur_form.stem_type == StemType.W_STEM
-    assert cur_form.deriv == Deriv.REG_CONJ
+    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+
+    assert cur_form.features is None
+    assert cur_form.stem_type is StemType.W_STEM
+    assert cur_form.deriv is Deriv.REG_CONJ
 
     cur_form = word_parse.parses[4]
-    assert cur_form.tense == Tense.PRES
-    assert cur_form.mood == Mood.IMPERAT
-    assert cur_form.voice == Voice.MP
-    assert cur_form.person == Person.SECOND
-    assert cur_form.num == Num.SG
+    assert all(
+        [
+            _in_frozen_set(Tense.PRES, cur_form.tense),
+            _in_frozen_set(Mood.IMPERAT, cur_form.mood),
+            _in_frozen_set(Voice.MP, cur_form.voice),
+            _in_frozen_set(Person.SECOND, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+        ]
+    )
     assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert cur_form.dialect is None
 
-    # TODO: process the tab seperated fields differently
-    assert not cur_form.dialects
-    assert cur_form.features == frozenset((Feature.CONTR,))
-    assert cur_form.stem_type == StemType.AW_PR
-    assert cur_form.deriv == Deriv.AW_DENOM
+    assert _in_frozen_set(Feature.CONTR, cur_form.features)
+    assert cur_form.stem_type is StemType.AW_PR
+    assert cur_form.deriv is Deriv.AW_DENOM
 
     cur_form = word_parse.parses[9]
-    assert cur_form.tense == Tense.IMPFERF
-    assert cur_form.mood == Mood.IND
-    assert cur_form.voice == Voice.MP
-    assert cur_form.person == Person.SECOND
-    assert cur_form.num == Num.SG
-    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
-    assert (
-        cur_form.dialects
-        and cur_form.dialects.homeric
-        and cur_form.dialects.ionic
-        and not cur_form.dialects.aeolic
-        and not cur_form.dialects.attic
-        and not cur_form.dialects.doric
-        and not cur_form.dialects.epic
-        and not cur_form.dialects.parad_form
-        and not cur_form.dialects.prose
+    assert all(
+        [
+            _in_frozen_set(Tense.IMPERF, cur_form.tense),
+            _in_frozen_set(Mood.IND, cur_form.mood),
+            _in_frozen_set(Voice.MP, cur_form.voice),
+            _in_frozen_set(Person.SECOND, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+            _in_frozen_set([Dialect.HOMERIC, Dialect.IONIC], cur_form.dialect),
+        ]
     )
-    assert cur_form.features == frozenset((Feature.CONTR, Feature.UNAUGMENTED))
-    assert cur_form.stem_type == StemType.AW_PR
-    assert cur_form.deriv == Deriv.AW_DENOM
+    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+
+    assert _in_frozen_set(
+        [Feature.CONTR, Feature.UNAUGMENTED], cur_form.features
+    )
+    assert cur_form.stem_type is StemType.AW_PR
+    assert cur_form.deriv is Deriv.AW_DENOM
 
     # raw output of crunching luw/ ignoring accents:
     #  "luw/\n"
@@ -246,9 +250,39 @@ async def _process_async_crunch_structured_greek_noun():
             morph_parse.tense is None,
             morph_parse.voice is None,
             morph_parse.mood is None,
-            morph_parse.dialects is None,
-            isinstance(morph_parse.features, frozenset)
-            and not len(morph_parse.features),
+            morph_parse.dialect is None,
+            morph_parse.features is None,
+        ]
+    )
+
+    assert all(
+        [
+            _in_frozen_set(Gender.MASC, morph_parse.gender),
+            _in_frozen_set(Case.NOM, morph_parse.case),
+            _in_frozen_set(Num.SG, morph_parse.num),
+        ]
+    )
+
+
+async def _process_async_crunch_structured_greek_part():
+    input_str = "lu/ousa"
+    result = [result async for result in async_crunch(input_str)][0]
+    assert result[0] == input_str
+    word_parse = result[1]
+    assert isinstance(word_parse, WordParse)
+    assert word_parse.lemma == beta_to_uni(input_str)
+    assert len(word_parse.parses) == 1
+
+    morph_parse = word_parse.parses[0]
+
+    assert all(
+        [
+            morph_parse.person is None,
+            morph_parse.tense is None,
+            morph_parse.voice is None,
+            morph_parse.mood is None,
+            morph_parse.dialect is None,
+            morph_parse.features is None,
         ]
     )
 
@@ -284,90 +318,80 @@ def test_crunch_structured():
 
     # things that whould hold for all parses of luw
     for parse in word_parse.parses:
-        print(f"{parse=}")
         assert parse.language == Language.GREEK
         assert parse.pos == POS.VERB
         assert not parse.case
         assert not parse.gender
 
     cur_form = word_parse.parses[0]
-    assert cur_form.tense == Tense.PRES
-    assert cur_form.mood == Mood.SUBJ
-    assert cur_form.voice == Voice.ACT
-    assert cur_form.person == Person.FIRST
-    assert cur_form.num == Num.SG
-    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
-    assert (
-        cur_form.dialects
-        and cur_form.dialects.epic
-        and not cur_form.dialects.aeolic
-        and not cur_form.dialects.attic
-        and not cur_form.dialects.doric
-        and not cur_form.dialects.homeric
-        and not cur_form.dialects.ionic
-        and not cur_form.dialects.parad_form
-        and not cur_form.dialects.prose
+
+    assert all(
+        [
+            _in_frozen_set(Tense.PRES, cur_form.tense),
+            _in_frozen_set(Mood.SUBJ, cur_form.mood),
+            _in_frozen_set(Voice.ACT, cur_form.voice),
+            _in_frozen_set(Person.FIRST, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+            _in_frozen_set(Dialect.EPIC, cur_form.dialect),
+        ]
     )
-    assert cur_form.features == frozenset()
-    assert cur_form.stem_type == StemType.W_STEM
-    assert cur_form.deriv == Deriv.REG_CONJ
+    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+
+    assert cur_form.features is None
+    assert cur_form.stem_type is StemType.W_STEM
+    assert cur_form.deriv is Deriv.REG_CONJ
 
     cur_form = word_parse.parses[1]
-    assert cur_form.tense == Tense.PRES
-    assert cur_form.mood == Mood.IND
-    assert cur_form.voice == Voice.ACT
-    assert cur_form.person == Person.FIRST
-    assert cur_form.num == Num.SG
-    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
-    assert (
-        cur_form.dialects
-        and cur_form.dialects.epic
-        and not cur_form.dialects.aeolic
-        and not cur_form.dialects.attic
-        and not cur_form.dialects.doric
-        and not cur_form.dialects.homeric
-        and not cur_form.dialects.ionic
-        and not cur_form.dialects.parad_form
-        and not cur_form.dialects.prose
+    assert all(
+        [
+            _in_frozen_set(Tense.PRES, cur_form.tense),
+            _in_frozen_set(Mood.IND, cur_form.mood),
+            _in_frozen_set(Voice.ACT, cur_form.voice),
+            _in_frozen_set(Person.FIRST, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+            _in_frozen_set(Dialect.EPIC, cur_form.dialect),
+        ]
     )
-    assert cur_form.features == frozenset()
-    assert cur_form.stem_type == StemType.W_STEM
-    assert cur_form.deriv == Deriv.REG_CONJ
+
+    assert cur_form.dict_forms == [beta_to_uni("lu/w"), beta_to_uni("lu/w")]
+    assert cur_form.features is None
+    assert cur_form.stem_type is StemType.W_STEM
+    assert cur_form.deriv is Deriv.REG_CONJ
 
     cur_form = word_parse.parses[4]
-    assert cur_form.tense == Tense.PRES
-    assert cur_form.mood == Mood.IMPERAT
-    assert cur_form.voice == Voice.MP
-    assert cur_form.person == Person.SECOND
-    assert cur_form.num == Num.SG
+    assert all(
+        [
+            _in_frozen_set(Tense.PRES, cur_form.tense),
+            _in_frozen_set(Mood.IMPERAT, cur_form.mood),
+            _in_frozen_set(Voice.MP, cur_form.voice),
+            _in_frozen_set(Person.SECOND, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+        ]
+    )
     assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
 
-    assert not cur_form.dialects
-    assert cur_form.features == frozenset((Feature.CONTR,))
-    assert cur_form.stem_type == StemType.AW_PR
-    assert cur_form.deriv == Deriv.AW_DENOM
+    assert cur_form.dialect is None
+    assert _in_frozen_set(Feature.CONTR, cur_form.features)
+    assert cur_form.stem_type is StemType.AW_PR
+    assert cur_form.deriv is Deriv.AW_DENOM
 
     cur_form = word_parse.parses[9]
-    assert cur_form.tense == Tense.IMPFERF
-    assert cur_form.mood == Mood.IND
-    assert cur_form.voice == Voice.MP
-    assert cur_form.person == Person.SECOND
-    assert cur_form.num == Num.SG
-    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
-    assert (
-        cur_form.dialects
-        and cur_form.dialects.homeric
-        and cur_form.dialects.ionic
-        and not cur_form.dialects.aeolic
-        and not cur_form.dialects.attic
-        and not cur_form.dialects.doric
-        and not cur_form.dialects.epic
-        and not cur_form.dialects.parad_form
-        and not cur_form.dialects.prose
+    assert all(
+        [
+            _in_frozen_set(Tense.IMPERF, cur_form.tense),
+            _in_frozen_set(Mood.IND, cur_form.mood),
+            _in_frozen_set(Voice.MP, cur_form.voice),
+            _in_frozen_set(Person.SECOND, cur_form.person),
+            _in_frozen_set(Num.SG, cur_form.num),
+            _in_frozen_set([Dialect.HOMERIC, Dialect.IONIC], cur_form.dialect),
+        ]
     )
-    assert cur_form.features == frozenset((Feature.CONTR, Feature.UNAUGMENTED))
-    assert cur_form.stem_type == StemType.AW_PR
-    assert cur_form.deriv == Deriv.AW_DENOM
+    assert cur_form.dict_forms == [beta_to_uni("luw="), beta_to_uni("lua/w")]
+    assert _in_frozen_set(
+        [Feature.CONTR, Feature.UNAUGMENTED], cur_form.features
+    )
+    assert cur_form.stem_type is StemType.AW_PR
+    assert cur_form.deriv is Deriv.AW_DENOM
 
     # "luw/\n"
     # "<NL>V lu/w,lu/w  pres subj act 1st sg\tepic\t\tw_stem,reg_conj</NL>"
@@ -385,6 +409,27 @@ def test_crunch_structured():
     # "sg\tattic epic doric ionic\tcontr\tew_pr,aw_denom</NL>"
     # "<NL>V luw=,lua/w  imperf ind mp 2nd "
     # "sg\thomeric ionic\tcontr unaugmented\taw_pr,aw_denom</NL>\n"
+
+
+def test_italian_crunch():
+    input_str = "amando"
+    result = list(crunch(input_str, language=Language.ITALIAN))[0]
+    assert result[0] == input_str
+    assert isinstance(result[1], WordParse)
+    assert len(result[1].parses) == 1
+
+    morph_parse = result[1].parses[0]
+    assert all(
+        [
+            morph_parse.dict_forms == ["amare"],
+            morph_parse.pos is POS.VERB,
+            _in_frozen_set(Tense.GERUNDIVE, morph_parse.tense),
+            _in_frozen_set(Mood.GERUNDIVE, morph_parse.mood),
+            _in_frozen_set(Gender.MASC, morph_parse.gender),
+        ]
+    )
+
+    # <NL>V amare  gerundive masc sg\t\t\tconj1,are_vb</NL>
 
 
 @pytest.mark.asyncio

@@ -13,7 +13,7 @@ from morpheus_python_api.types import (
     POS,
     Case,
     Deriv,
-    Dialects,
+    Dialect,
     Feature,
     Gender,
     Language,
@@ -28,8 +28,10 @@ from morpheus_python_api.types import (
 )
 
 
-_VERB_PARSE_STACK = [Num, Person, Voice, Mood, Tense, "dict_forms"]
+# We need gender because Italian gerundives are parsed as verbs
+_VERB_PARSE_STACK = [Num, Person, Voice, Gender, Mood, Tense, "dict_forms"]
 _NOUN_PARSE_STACK = [Num, Case, Gender, "dict_forms"]
+_PART_PARSE_STACK = [Num, Gender, Voice, Mood, Tense]
 
 
 def _split_by_first_tab(input_str: str) -> tuple[str, str]:
@@ -43,21 +45,32 @@ def _iter_parses(input_str: str) -> Iterator[str]:
 
 
 def _set_morphparse_field(
-    parse: MorphParse, word_part: type[StrEnum], fieldname: str
-):
-    setattr(parse, word_part.__name__.lower(), word_part(fieldname))
+    parse: MorphParse, word_part: type[StrEnum], component: list[str]
+) -> None:
+    fields = []
+    for fieldname in component:
+        # special logic to handle Italian gerundive, which covers mood and tense
+        if fieldname == "gerundive":
+            assert word_part is Tense
+            parse.tense = frozenset((Tense.GERUNDIVE,))
+            parse.mood = frozenset((Mood.GERUNDIVE,))
+            return
+        fields.append(word_part(fieldname))
+
+    setattr(parse, word_part.__name__.lower(), frozenset(fields))
 
 
-def _convert_morpheus_tag(tag: str) -> str:
+def _convert_morpheus_tag(tag: str) -> list[str]:
     # these conditionals need to include all the instances where Morpheus
     # notation differs the relevant StrEnum value in types.py
     if tag == "1st":
-        return "first"
+        return ["first"]
     if tag == "2nd":
-        return "second"
+        return ["second"]
     if tag == "3rd":
-        return "third"
-    return tag
+        return ["third"]
+    # this also handle alternatives, e.g. nom/voc
+    return tag.split("/")
 
 
 def _process_extra_fields(morph_parse: MorphParse, extra_fields: str) -> None:
@@ -68,12 +81,10 @@ def _process_extra_fields(morph_parse: MorphParse, extra_fields: str) -> None:
     stem_deriv = [f for f in fields[2].split(",") if len(f)]
 
     if len(dialects):
-        morph_parse.dialects = Dialects()
-    for dial in dialects:
-        assert dial in Dialects.__dataclass_fields__
-        setattr(morph_parse.dialects, dial, True)
+        morph_parse.dialect = frozenset(Dialect(dial) for dial in dialects)
 
-    morph_parse.features = frozenset(Feature(feat) for feat in features)
+    if len(features):
+        morph_parse.features = frozenset(Feature(feat) for feat in features)
 
     assert 0 < len(stem_deriv) < 3
     if len(stem_deriv) > 0:
@@ -105,8 +116,11 @@ def _decode_verb(
         # check for a tense
         if (
             verb_parse_fields[-1] == "dict_forms"
-            and component not in Tense.__members__.values()
+            and component[0] not in Tense.__members__.values()
         ):
+            # _convert_morpheus_tag will erroneously split
+            # dict_forms
+            component = "/".join(component)
             morph_parse.dict_forms = [
                 beta_to_uni(form)
                 if (language is Language.GREEK and not keep_betacode)
@@ -122,7 +136,7 @@ def _decode_verb(
         )
         while (
             verb_parse_fields
-            and component
+            and component[0]
             not in cast(
                 type[StrEnum], verb_parse_fields[-1]
             ).__members__.values()
@@ -132,9 +146,6 @@ def _decode_verb(
             # these are assumed to be lower case
             verb_part = verb_parse_fields.pop()
             _set_morphparse_field(morph_parse, verb_part, component)
-        else:
-            # keep last component for processing less standard data
-            parse_components.append(component)
 
     _process_extra_fields(morph_parse, extra_fields)
     return morph_parse
@@ -159,13 +170,13 @@ def _decode_noun(
         # check for a tense
         if (
             noun_parse_fields[-1] == "dict_forms"
-            and component not in Gender.__members__.values()
+            and component[0] not in Gender.__members__.values()
         ):
             morph_parse.dict_forms = [
                 beta_to_uni(form)
                 if (language is Language.GREEK and not keep_betacode)
                 else form
-                for form in component.split(",")
+                for form in component[0].split(",")
             ]
             noun_parse_fields.pop()
             continue
@@ -176,7 +187,7 @@ def _decode_noun(
         )
         while (
             noun_parse_fields
-            and component
+            and component[0]
             not in cast(
                 type[StrEnum], noun_parse_fields[-1]
             ).__members__.values()
@@ -186,9 +197,6 @@ def _decode_noun(
             # these are assumed to be lower case
             noun_part = noun_parse_fields.pop()
             _set_morphparse_field(morph_parse, noun_part, component)
-        else:
-            # keep last component for processing less standard data
-            parse_components.append(component)
 
     _process_extra_fields(morph_parse, extra_fields)
     return morph_parse

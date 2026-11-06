@@ -61,12 +61,13 @@ class Gender(StrEnum):
 
 class Tense(StrEnum):
     PRES = "pres"  # present
-    IMPFERF = "imperf"  # imperfect
+    IMPERF = "imperf"  # imperfect
     FUT = "fut"  # future
     AOR = "aor"  # aorist
     PERF = "perf"  # perfect
     PLUP = "plup"  # pluperfect
     FUTPERF = "futperf"  # future perfect
+    GERUNDIVE = "gerundive"  # Italian, doubles for tense
 
 
 class Mood(StrEnum):
@@ -76,6 +77,8 @@ class Mood(StrEnum):
     IMPERAT = "imperat"  # imperative
     INF = "inf"  # infinitive
     PART = "part"  # participle
+    COND = "cond"  # Italian conditional
+    GERUNDIVE = "gerundive"  # Italian, doubles for tense
 
 
 class Voice(StrEnum):
@@ -94,16 +97,15 @@ class Person(StrEnum):
 # Note that Latin always has no specified dialects
 # and that morphkeys.h also accepts non_homeric_epic and ionic/homeric,
 # but these aren't actually produced by any cruncher parse
-@dataclass
-class Dialects:
-    aeolic: bool = False
-    attic: bool = False
-    doric: bool = False
-    epic: bool = False
-    homeric: bool = False
-    ionic: bool = False
-    parad_form: bool = False  # paradigmatic form
-    prose: bool = False
+class Dialect(StrEnum):
+    AEOLIC = "aeolic"
+    ATTIC = "attic"
+    DORIC = "doric"
+    EPIC = "epic"
+    HOMERIC = "homeric"
+    IONIC = "ionic"
+    PARAD_FORM = "parad_form"  # PARADIGMATIC FORM
+    PROSE = "prose"
 
 
 # BEGIN: code generated with Claude Sonnet 5.5
@@ -496,15 +498,16 @@ class MorphParse:
     language: Language
     pos: POS
     dict_forms: list[str] | None = None
-    case: Case | None = None
-    num: Num | None = None
-    gender: Gender | None = None
-    tense: Tense | None = None
-    mood: Mood | None = None
-    voice: Voice | None = None
-    person: Person | None = None
+    # a noun parse can have multiple cases, e.g. nom/voc in cruncher output
+    case: frozenset[Case] | None = None
+    num: frozenset[Num] | None = None
+    gender: frozenset[Gender] | None = None
+    tense: frozenset[Tense] | None = None
+    mood: frozenset[Mood] | None = None
+    voice: frozenset[Voice] | None = None
+    person: frozenset[Person] | None = None
 
-    dialects: Dialects | None = None
+    dialect: frozenset[Dialect] | None = None
     features: frozenset[Feature] | None = None
     stem_type: StemType | None = None
     deriv: Deriv | None = None
