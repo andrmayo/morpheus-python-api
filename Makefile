@@ -10,6 +10,11 @@ all:
 	# This sed call patches in an explicit return code of 0
 	@ sed -i -e '/^\treturn 0;$$/d' -e 's/^\tindex_\(noms\|vbs\)(3,0,0,0);$$/&\n\treturn 0;/' \
 		morpheus/src/gkdict/indexnoms.main.c morpheus/src/gkdict/indexvbs.main.c
+	# The cruncher prints a progress line to stderr every 1000 lines, even with -T,
+	# which breaks streaming since stderr is merged into stdout
+	# This sed call makes that progress line conditional on timeit, so -T turns it off
+	@ sed -i 's/^    if(! ( nwords % 1000) ) {$$/    if( timeit \&\& ! ( nwords % 1000) ) {/' \
+		morpheus/src/anal/stdiomorph.c
 	@ cd morpheus/src && CFLAGS='-std=gnu89 -fcommon' make
 
 install:

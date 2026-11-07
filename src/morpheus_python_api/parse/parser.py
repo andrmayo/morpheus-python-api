@@ -84,6 +84,9 @@ def _build_cmd_args(
     if verbs_only:
         cmd_args.append("-V")
 
+    # This turns off timeit for cruncher
+    cmd_args.append("-T")
+
     return cmd_args, env
 
 
@@ -225,11 +228,13 @@ def crunch(
     non_strict_case: bool = False,
     ignore_accents: bool = False,
     database_format: bool = False,
+    # FIX: ending_index not tested
     ending_index: bool = False,
     # This is a bit different from the cruncher binary
     # since it also keeps betacode when raw_cruncher_output = False
     keep_beta_code: bool = False,
     lemma: bool = False,
+    # FIX: perseus_format_off not tested
     perseus_format_off: bool = False,
     verbs_only: bool = False,
     raw_cruncher_output: bool = False,
