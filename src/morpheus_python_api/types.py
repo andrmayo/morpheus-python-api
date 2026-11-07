@@ -550,7 +550,6 @@ class MorphParse:
     voice: frozenset[Voice] | None = None
     person: frozenset[Person] | None = None
     degree: frozenset[Degree] | None = None
-    adverbial: bool = False
 
     dialect: frozenset[Dialect] | None = None
     features: frozenset[Feature] | None = None

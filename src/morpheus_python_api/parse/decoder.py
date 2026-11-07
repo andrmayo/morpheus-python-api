@@ -124,7 +124,6 @@ def _decode_verb(
         component = _convert_morpheus_tag(parse_components.pop())
         # special case: adverbial
         if component[0] == "adverbial":
-            morph_parse.adverbial = True
             # Overwrites previous setting of POS
             morph_parse.pos = POS.ADV
             if len(component) > 1:
@@ -188,7 +187,6 @@ def _decode_noun(
         component = _convert_morpheus_tag(parse_components.pop())
         # special case: adverbial
         if component[0] == "adverbial":
-            morph_parse.adverbial = True
             # Overwrites previous setting of POS
             morph_parse.pos = POS.ADV
             # This guards against adverbial/something,
@@ -261,7 +259,6 @@ def _decode_part(
         component = _convert_morpheus_tag(parse_components.pop())
         # special case: adverbial
         if component[0] == "adverbial":
-            morph_parse.adverbial = True
             # Overwrites previous setting of POS
             morph_parse.pos = POS.ADV
             if len(component) > 1:

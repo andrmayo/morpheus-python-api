@@ -316,8 +316,6 @@ async def _process_async_crunch_structured_greek_adverb():
 
     assert morph_parse.dict_forms == [beta_to_uni("a(plo/s")]
 
-    assert morph_parse.adverbial is True
-
     assert all(
         [
             morph_parse.language is Language.GREEK,
@@ -363,8 +361,6 @@ async def _process_async_crunch_structured_latin_supine():
     morph_parse = word_parse.parses[0]
 
     assert morph_parse.dict_forms == ["eo#1"]
-
-    assert morph_parse.adverbial is False
 
     assert all(
         [
