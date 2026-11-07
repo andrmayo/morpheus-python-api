@@ -303,8 +303,11 @@ def decode_crunch(
     # crunches end with a new line, but might as well strip all whitespace
     input_str = input_str.strip()[:-5]  # drop final <\NL>
     lemma, input_str = input_str.split("\n", 1)
-    lemma = lemma if keep_betacode else beta_to_uni(lemma)
-    # TODO: assume greek verb for now
+    lemma = (
+        beta_to_uni(lemma)
+        if language is Language.GREEK and not keep_betacode
+        else lemma
+    )
     word_parse = WordParse(lemma, [])
     for parse in _iter_parses(input_str):
         if parse[0] == "V":
