@@ -66,12 +66,6 @@ def _set_morphparse_field(
             parse.tense = frozenset((Tense.GERUNDIVE,))
             parse.mood = frozenset((Mood.GERUNDIVE,))
             return
-        # same logic for Latin supline
-        if fieldname == "supine":
-            assert word_part is Tense
-            parse.tense = frozenset((Tense.SUPINE,))
-            parse.mood = frozenset((Mood.SUPINE,))
-            return
         fields.append(word_part(fieldname))
 
     setattr(parse, word_part.__name__.lower(), frozenset(fields))
@@ -131,6 +125,8 @@ def _decode_verb(
         # special case: adverbial
         if component[0] == "adverbial":
             morph_parse.adverbial = True
+            # Overwrites previous setting of POS
+            morph_parse.pos = POS.ADV
             if len(component) > 1:
                 parse_components.append("/".join(component[1:]))
             continue
@@ -190,6 +186,24 @@ def _decode_noun(
 
     while parse_components and noun_parse_fields:
         component = _convert_morpheus_tag(parse_components.pop())
+        # special case: adverbial
+        if component[0] == "adverbial":
+            morph_parse.adverbial = True
+            # Overwrites previous setting of POS
+            morph_parse.pos = POS.ADV
+            # This guards against adverbial/something,
+            # but not something/adverbial,
+            # and is likely to be unnecessary
+            if len(component) > 1:
+                parse_components.append("/".join(component[1:]))
+            continue
+        # special case: Latin supline
+        if component[0] == "supine":
+            morph_parse.tense = frozenset((Tense.SUPINE,))
+            morph_parse.mood = frozenset((Mood.SUPINE,))
+            if len(component) > 1:
+                parse_components.append("/".join(component[1:]))
+            continue
         # Special case: when short-vowel and long-vowel forms are given
         # Since tense has to follow these forms when they're present, we can
         # check for a tense
@@ -245,6 +259,14 @@ def _decode_part(
     morph_parse = MorphParse(language, POS.PART)
     while parse_components and part_parse_fields:
         component = _convert_morpheus_tag(parse_components.pop())
+        # special case: adverbial
+        if component[0] == "adverbial":
+            morph_parse.adverbial = True
+            # Overwrites previous setting of POS
+            morph_parse.pos = POS.ADV
+            if len(component) > 1:
+                parse_components.append("/".join(component[1:]))
+            continue
         # Special case: when short-vowel and long-vowel forms are given
         # Since tense has to follow these forms when they're present, we can
         # check for a tense

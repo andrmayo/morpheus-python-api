@@ -27,6 +27,9 @@ class CrunchOptions(BaseModel):
     raise_on_failure: bool = True
 
 
+# Cruncher doesn't actually use all of these
+# This project's structured parsing DOES use
+# ADV, but cruncher itself doesn't
 class POS(StrEnum):
     NOUN = "noun"
     VERB = "verb"
@@ -547,6 +550,7 @@ class MorphParse:
     voice: frozenset[Voice] | None = None
     person: frozenset[Person] | None = None
     degree: frozenset[Degree] | None = None
+    adverbial: bool = False
 
     dialect: frozenset[Dialect] | None = None
     features: frozenset[Feature] | None = None

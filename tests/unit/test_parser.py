@@ -107,6 +107,8 @@ async def test_async_crunch_structured():
     await _process_async_crunch_structured_greek_verb()
     await _process_async_crunch_structured_greek_noun()
     await _process_async_crunch_structured_greek_part()
+    await _process_async_crunch_structured_greek_adverb()
+    await _process_async_crunch_structured_latin_supine()
 
 
 async def _process_async_crunch_structured_greek_verb():
@@ -299,6 +301,97 @@ async def _process_async_crunch_structured_greek_part():
     # \tattic epic doric ionic\t\tw_stem,reg_conj</NL>
     # <NL>P lu_/ousa,lu/w  pres part act fem nom/voc sg
     # \tattic epic doric ionic\t\tw_stem,reg_conj</NL>
+
+
+async def _process_async_crunch_structured_greek_adverb():
+    input_str = "a(plw=s"
+    result = [result async for result in async_crunch(input_str)][0]
+    assert result[0] == input_str
+    word_parse = result[1]
+    assert isinstance(word_parse, WordParse)
+    assert word_parse.lemma == beta_to_uni(input_str)
+    assert len(word_parse.parses) == 3
+
+    morph_parse = word_parse.parses[0]
+
+    assert morph_parse.dict_forms == [beta_to_uni("a(plo/s")]
+
+    assert morph_parse.adverbial is True
+
+    assert all(
+        [
+            morph_parse.language is Language.GREEK,
+            morph_parse.pos is POS.ADV,
+            morph_parse.person is None,
+            morph_parse.case is None,
+            morph_parse.num is None,
+            morph_parse.gender is None,
+            morph_parse.degree is None,
+            morph_parse.voice is None,
+            morph_parse.tense is None,
+            morph_parse.mood is None,
+        ]
+    )
+
+    assert all(
+        [
+            morph_parse.dialect is None,
+            morph_parse.features is None,
+            morph_parse.stem_type is StemType.OS_H_ON,
+            morph_parse.deriv is None,
+        ]
+    )
+
+    # <NL>N a(plo/s  adverbial\t\t\tos_h_on</NL>
+    # <NL>V a(plo/w  pres ind act 2nd sg
+    #   \tdoric aeolic\tcontr\tow_pr,ow_denom</NL>
+    # <NL>N a(plw=s \t\tindeclform\tadverb</NL>
+
+
+async def _process_async_crunch_structured_latin_supine():
+    input_str = "itum"
+    result = [
+        result
+        async for result in async_crunch(input_str, language=Language.LATIN)
+    ][0]
+    assert result[0] == input_str
+    word_parse = result[1]
+    assert isinstance(word_parse, WordParse)
+    assert word_parse.lemma == input_str
+    assert len(word_parse.parses) == 2
+
+    morph_parse = word_parse.parses[0]
+
+    assert morph_parse.dict_forms == ["eo#1"]
+
+    assert morph_parse.adverbial is False
+
+    assert all(
+        [
+            morph_parse.language is Language.LATIN,
+            morph_parse.pos is POS.NOUN,
+            morph_parse.person is None,
+            morph_parse.degree is None,
+            morph_parse.voice is None,
+            _in_frozen_set(Case.NOM, morph_parse.case),
+            _in_frozen_set(Num.SG, morph_parse.num),
+            _in_frozen_set(Gender.NEUT, morph_parse.gender),
+            _in_frozen_set(Tense.SUPINE, morph_parse.tense),
+            _in_frozen_set(Mood.SUPINE, morph_parse.mood),
+        ]
+    )
+
+    assert all(
+        [
+            morph_parse.dialect is None,
+            morph_parse.features is None,
+            morph_parse.stem_type is StemType.PP4,
+            morph_parse.deriv is None,
+        ]
+    )
+
+    # <NL>N eo#1  supine neut nom sg\t\t\tpp4</NL>
+    # <NL>N itus  masc acc sg\t\t\tus_us</NL>
 
 
 def test_crunch_structured():
