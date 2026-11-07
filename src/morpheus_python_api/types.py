@@ -67,7 +67,8 @@ class Tense(StrEnum):
     PERF = "perf"  # perfect
     PLUP = "plup"  # pluperfect
     FUTPERF = "futperf"  # future perfect
-    GERUNDIVE = "gerundive"  # Italian, doubles for tense
+    SUPINE = "supine"  # also for tense
+    GERUNDIVE = "gerundive"  # Latin/Italian, also in tense
     PASTABS = "pastabs"  # Italian passato remoto
 
 
@@ -78,8 +79,9 @@ class Mood(StrEnum):
     IMPERAT = "imperat"  # imperative
     INF = "inf"  # infinitive
     PART = "part"  # participle
+    SUPINE = "supine"  # Latin, also tense
+    GERUNDIVE = "gerundive"  # Latin/Italian, also tense
     COND = "cond"  # Italian conditional
-    GERUNDIVE = "gerundive"  # Italian, doubles for tense
 
 
 class Voice(StrEnum):

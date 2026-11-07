@@ -30,8 +30,18 @@ from morpheus_python_api.types import (
 
 
 # We need gender because Italian gerundives are parsed as verbs
-_VERB_PARSE_STACK = [Num, Person, Voice, Gender, Mood, Tense, "dict_forms"]
-_NOUN_PARSE_STACK = [Num, Case, Degree, Gender, "dict_forms"]
+_VERB_PARSE_STACK = [
+    Num,
+    Person,
+    Degree,
+    Case,
+    Voice,
+    Gender,
+    Mood,
+    Tense,
+    "dict_forms",
+]
+_NOUN_PARSE_STACK = [Num, Degree, Person, Case, Gender, "dict_forms"]
 _PART_PARSE_STACK = [Num, Case, Gender, Voice, Mood, Tense, "dict_forms"]
 
 
@@ -50,11 +60,17 @@ def _set_morphparse_field(
 ) -> None:
     fields = []
     for fieldname in component:
-        # special logic to handle Italian gerundive, which covers mood and tense
+        # special logic for Latin/Italian gerundive, which covers mood and tense
         if fieldname == "gerundive":
             assert word_part is Tense
             parse.tense = frozenset((Tense.GERUNDIVE,))
             parse.mood = frozenset((Mood.GERUNDIVE,))
+            return
+        # same logic for Latin supline
+        if fieldname == "supine":
+            assert word_part is Tense
+            parse.tense = frozenset((Tense.SUPINE,))
+            parse.mood = frozenset((Mood.SUPINE,))
             return
         fields.append(word_part(fieldname))
 
@@ -112,12 +128,20 @@ def _decode_verb(
     morph_parse = MorphParse(language, POS.VERB)
     while parse_components and verb_parse_fields:
         component = _convert_morpheus_tag(parse_components.pop())
+        # special case: adverbial
+        if component[0] == "adverbial":
+            morph_parse.adverbial = True
+            if len(component) > 1:
+                parse_components.append("/".join(component[1:]))
+            continue
+
         # Special case: when short-vowel and long-vowel forms are given
         # Since tense has to follow these forms when they're present, we can
         # check for a tense
         if (
             verb_parse_fields[-1] == "dict_forms"
             and component[0] not in Tense.__members__.values()
+            and component[0] not in Gender.__members__.values()
         ):
             # _convert_morpheus_tag will erroneously split
             # dict_forms
@@ -172,12 +196,16 @@ def _decode_noun(
         if (
             noun_parse_fields[-1] == "dict_forms"
             and component[0] not in Gender.__members__.values()
+            and component[0] not in Tense.__members__.values()
         ):
+            # _convert_morpheus_tag will erroneously split
+            # dict_forms
+            component = "/".join(component)
             morph_parse.dict_forms = [
                 beta_to_uni(form)
                 if (language is Language.GREEK and not keep_betacode)
                 else form
-                for form in component[0].split(",")
+                for form in component.split(",")
             ]
             noun_parse_fields.pop()
             continue
