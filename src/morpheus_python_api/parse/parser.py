@@ -11,7 +11,7 @@ binaries are buffered by line.
 import subprocess
 from asyncio import StreamReader, create_subprocess_exec, StreamWriter
 from asyncio.subprocess import PIPE
-from collections.abc import AsyncIterable, AsyncIterator, Iterator
+from collections.abc import AsyncIterable, AsyncIterator, Iterable, Iterator
 from io import BufferedWriter, BufferedReader, TextIOBase
 from os import environ
 from typing import cast
@@ -223,7 +223,7 @@ async def async_crunch(
 
 
 def crunch(
-    inputs: str | list[str] | TextIOBase,
+    inputs: str | TextIOBase | Iterable[str],
     language: Language = Language.GREEK,
     non_strict_case: bool = False,
     ignore_accents: bool = False,
@@ -397,7 +397,8 @@ async def async_gen(
 
 
 def gen(
-    inputs: str | list[str] | TextIOBase, raise_on_failure: bool = True
+    inputs: str | TextIOBase | Iterable[str],
+    raise_on_failure: bool = True,
 ) -> Iterator[tuple[str, str]]:
     """Generates a parse table from a lemma using Morpheus.
     Unparsable input_strs raise a ValueError."""
