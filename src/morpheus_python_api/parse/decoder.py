@@ -320,7 +320,8 @@ def decode_crunch(
                 f"Language should be greek, latin, or italian, got {language}."
             )
     # crunches end with a new line, but might as well strip all whitespace
-    input_str = input_str.strip()[:-5]  # drop final <\NL>
+    end = input_str.rfind("</NL>")  # drop final </NL>
+    input_str = input_str[:end].strip()
     lemma, input_str = input_str.split("\n", 1)
     lemma = (
         beta_to_uni(lemma)
