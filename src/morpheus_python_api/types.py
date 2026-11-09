@@ -3,13 +3,13 @@ Module for any type and enum definitions useful across modules.
 """
 
 from dataclasses import dataclass
-from enum import auto, Enum, StrEnum
+from enum import StrEnum
 
 
-class Language(Enum):
-    GREEK = auto()
-    LATIN = auto()
-    ITALIAN = auto()
+class Language(StrEnum):
+    GREEK = "greek"
+    LATIN = "latin"
+    ITALIAN = "italian"
 
 
 # Cruncher doesn't actually use all of these
