@@ -8,9 +8,10 @@ more overhead when inputs are all available initially, since outputs from the C
 binaries are buffered by line.
 """
 
+from contextlib import suppress
 import subprocess
-from asyncio import StreamReader, create_subprocess_exec, StreamWriter
-from asyncio.subprocess import PIPE
+from asyncio import StreamReader, create_subprocess_exec, StreamWriter, wait_for
+from asyncio.subprocess import PIPE, Process
 from collections.abc import AsyncIterable, AsyncIterator, Iterable, Iterator
 from io import BufferedWriter, BufferedReader, TextIOBase
 from os import environ
@@ -150,6 +151,19 @@ async def _async_crunch_loop_logic(
     return crunch_output[0], structured_output
 
 
+async def _stop_process(proc: Process, timeout: float = 2.0) -> None:
+    if proc.returncode is not None:
+        return
+    with suppress(ProcessLookupError):
+        proc.terminate()  # SIGTERM
+    try:
+        await wait_for(proc.wait(), timeout)
+    except TimeoutError:
+        with suppress(ProcessLookupError):
+            proc.kill()  # SIGKILL
+        await proc.wait()
+
+
 async def async_crunch(
     inputs: str | list[str] | TextIOBase | AsyncIterable[str],
     language: Language = Language.GREEK,
@@ -198,28 +212,32 @@ async def async_crunch(
     )
     proc.stdin = cast(StreamWriter, proc.stdin)
     proc.stdout = cast(StreamReader, proc.stdout)
-    if isinstance(inputs, AsyncIterable):
-        async for input_str in inputs:
-            yield await _async_crunch_loop_logic(
-                input_str,
-                proc.stdin,
-                proc.stdout,
-                raise_on_failure,
-                language,
-                keep_beta_code,
-                raw_cruncher_output,
-            )
-    else:
-        for input_str in inputs:
-            yield await _async_crunch_loop_logic(
-                input_str,
-                proc.stdin,
-                proc.stdout,
-                raise_on_failure,
-                language,
-                keep_beta_code,
-                raw_cruncher_output,
-            )
+
+    try:
+        if isinstance(inputs, AsyncIterable):
+            async for input_str in inputs:
+                yield await _async_crunch_loop_logic(
+                    input_str,
+                    proc.stdin,
+                    proc.stdout,
+                    raise_on_failure,
+                    language,
+                    keep_beta_code,
+                    raw_cruncher_output,
+                )
+        else:
+            for input_str in inputs:
+                yield await _async_crunch_loop_logic(
+                    input_str,
+                    proc.stdin,
+                    proc.stdout,
+                    raise_on_failure,
+                    language,
+                    keep_beta_code,
+                    raw_cruncher_output,
+                )
+    finally:
+        await _stop_process(proc)
 
 
 def crunch(
