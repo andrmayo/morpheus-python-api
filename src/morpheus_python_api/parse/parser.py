@@ -34,7 +34,7 @@ _GEN_END = "--\n--\n--\n".encode("utf-8")
 
 def _ensure_betacode(text: str) -> str:
     if any(
-        "\u0370" <= char <= "\u03ff" or "\u1f00" <= char <= "u1FFF"
+        "\u0370" <= char <= "\u03ff" or "\u1f00" <= char <= "\u1fff"
         for char in text
     ):
         return uni_to_beta(text)
@@ -121,7 +121,7 @@ async def _async_crunch_loop_logic(
     input_str = input_str.strip()
     if language is Language.GREEK:
         try:
-            _ensure_betacode(input_str)
+            input_str = _ensure_betacode(input_str)
         except Exception as e:
             if raise_on_failure:
                 raise Exception(
